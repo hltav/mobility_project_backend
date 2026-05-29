@@ -20,13 +20,14 @@ O objetivo é manter o backend leve e focado em negócio, enquanto o processor r
 ```mermaid
 flowchart LR
     A[Cliente Mobile/Web] -->|HTTP| B[Backend Laravel]
-    B -->|DB / consultas| C[MySQL]
-    B -->|HTTP / RPC| D[Processor Go]
-    D -->|SPTrans API| E[SPTrans OlhoVivo]
-    D -->|Dados de paradas| F[GTFS / Import]
-    B -->|Cache| G[Redis / DB cache]
+    B -->|Leitura/Escrita| C[MySQL]
+    D[Processor Go] -->|Leitura/Escrita| C
+    B <--> |Pub/Sub / Queue| E[Valkey]
+    D <--> |Pub/Sub / Queue| E
+    D -->|SPTrans API| F[SPTrans OlhoVivo]
+    D -->|GTFS| G[Importação de Dados]
     style B fill:#f96,stroke:#333,stroke-width:2px
-    style D fill:#6cf,stroke:#333,stroke-width:2px
+    style D fill:#5aa,stroke:#333,stroke-width:2px
     style C fill:#fff,stroke:#333,stroke-width:1px
     style E fill:#f3f,stroke:#333,stroke-width:1px
     style F fill:#ccc,stroke:#333,stroke-width:1px
@@ -227,9 +228,9 @@ GOOGLE_CLIENT_SECRET=...
 GOOGLE_REDIRECT_URI=http://localhost:8000/api/auth/google/callback
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_DATABASE=mobility_project
-DB_USERNAME=mobility_user
-DB_PASSWORD=mobility_2026
+DB_DATABASE=user_project
+DB_USERNAME=user
+DB_PASSWORD=user_password
 SERVER_PORT=3000
 ```
 
