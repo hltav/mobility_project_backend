@@ -14,6 +14,8 @@ class LineDTO
         public readonly string $destination,
         public readonly bool   $circular,
         public readonly int    $sptransId,
+        public readonly ?float  $originLat = null,
+        public readonly ?float  $originLng = null,
     ) {}
 
     /**
@@ -22,13 +24,15 @@ class LineDTO
     public static function fromModel(Line $line): self
     {
         return new self(
-            id:          $line->id,
-            code:        $line->code,
-            name:        $line->name,
-            origin:      $line->origin,
+            id: $line->id,
+            code: $line->code,
+            name: $line->name,
+            origin: $line->origin,
             destination: $line->destination,
-            circular:    $line->circular,
-            sptransId:   $line->sptrans_id,
+            circular: $line->circular,
+            sptransId: $line->sptrans_id,
+            originLat: $line->origin_lat,
+            originLng: $line->origin_lng,
         );
     }
 
@@ -45,26 +49,27 @@ class LineDTO
     public static function fromSptrans(array $data): self
     {
         return new self(
-            id:          0,
-            code:        $data['lt'] ?? '',
-            name:        ($data['tp'] ?? '') . ' - ' . ($data['ts'] ?? ''),
-            origin:      $data['tp'] ?? '',
+            id: 0,
+            code: $data['lt'] ?? '',
+            name: ($data['tp'] ?? '') . ' - ' . ($data['ts'] ?? ''),
+            origin: $data['tp'] ?? '',
             destination: $data['ts'] ?? '',
-            circular:    (bool) ($data['lc'] ?? false),
-            sptransId:   $data['cl'] ?? 0,
+            circular: (bool) ($data['lc'] ?? false),
+            sptransId: $data['cl'] ?? 0,
         );
     }
 
     public function toArray(): array
     {
         return [
-            'id'          => $this->id,
             'code'        => $this->code,
             'name'        => $this->name,
             'origin'      => $this->origin,
             'destination' => $this->destination,
             'circular'    => $this->circular,
             'sptrans_id'  => $this->sptransId,
+            'origin_lat'  => $this->originLat,
+            'origin_lng'  => $this->originLng,
         ];
     }
 }

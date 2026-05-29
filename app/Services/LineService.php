@@ -4,15 +4,16 @@ namespace App\Services;
 
 use App\DTOs\BusDTO;
 use App\DTOs\LineDTO;
+use App\Models\Line;
 use App\Repositories\LineRepository;
-use App\Services\ExternalApiService;
 use Illuminate\Pagination\LengthAwarePaginator;
+use App\Services\ProcessorService;
 
 class LineService
 {
     public function __construct(
-        private readonly LineRepository     $lineRepository,
-        private readonly ExternalApiService $externalApiService,
+        private readonly LineRepository   $lineRepository,
+        private readonly ProcessorService $processorService,
     ) {}
 
     /**
@@ -50,6 +51,9 @@ class LineService
      * Busca posições em tempo real via SPTrans.
      * Autentica, consulta posição por código da linha.
      *
+     * @todo Migrar para o serviço em Go para melhor performance em
+     * requisições simultâneas e pooling de autenticação.
+     *
      * @return BusDTO[]
      */
     public function getBusPositions(int $lineId): array
@@ -60,52 +64,89 @@ class LineService
             return [];
         }
 
-        $rawBuses = $this->externalApiService->getBusPositionsByLine($line->sptrans_id);
+        // Atualmente chama o ProcessorService (PHP), será substituído por chamada ao Go.
+        $rawBuses = $this->processorService->getBusPositions($line->sptrans_id);
 
-        return array_map(fn($bus) => BusDTO::fromArray($bus), $rawBuses);
+        return array_map(fn($bus) => BusDTO::fromArray((array)$bus), $rawBuses);
     }
 
-    /**
-     * Sincroniza as linhas do banco local com os dados mais recentes
-     * da SPTrans. Busca os dados brutos, transforma em DTO e persiste.
-     */
-
-    public function syncLinesWithSptrans(): void
+    public function stopsForLine(int $lineId, ?int $direction = null): ?array
     {
-        $this->externalApiService->authenticate();
+        $line = $this->lineRepository->findById($lineId);
 
-        // Tente buscar por 'a' em vez de vazio para forçar o retorno de dados
-        $rawLines = $this->externalApiService->searchLines('8000');
-
-        if (empty($rawLines)) {
-            \Illuminate\Support\Facades\Log::warning('[Sync] Nenhuma linha retornada da SPTrans.');
-            return;
+        if (!$line) {
+            return null;
         }
 
-        foreach ($rawLines as $raw) {
-            $dto = LineDTO::fromSptrans($raw);
-            $this->lineRepository->upsert($dto->toArray());
+        $sptransLineId = $this->resolveSptransLineId($line, $direction);
+
+        // O Go agora é responsável por sincronizar as paradas desta linha.
+        $this->processorService->syncStopsForLine($sptransLineId);
+
+        // O Laravel agora apenas consulta o banco local (já atualizado pelo Go).
+        $stops = $line->busStops()
+            ->get()
+            ->map(fn($stop, $index) => [
+                'id'         => $stop->id,
+                'sptrans_id' => $stop->sptrans_code,
+                'name'       => $stop->name,
+                'address'    => $stop->address,
+                'lat'        => $stop->latitude,
+                'lng'        => $stop->longitude,
+                'order'      => $index + 1,
+            ])->toArray();
+
+        return [
+            'line' => [
+                'id' => $line->id,
+                'code' => $line->code,
+                'name' => $line->name,
+                'sptrans_id' => $sptransLineId,
+                'direction' => $direction,
+            ],
+            'stops' => $stops,
+        ];
+    }
+
+    private function resolveSptransLineId(Line $line, ?int $direction): int
+    {
+        if ($direction === null) {
+            return $line->sptrans_id;
         }
+
+        $resolvedId = $this->processorService->resolveLineId($line->code, $direction);
+        return $resolvedId > 0 ? $resolvedId : $line->sptrans_id;
     }
 
     public function syncByTerm(string $term): void
     {
-        $rawLines = $this->externalApiService->searchLines($term);
-
-        foreach ($rawLines as $raw) {
-            // LineDTO::fromSptrans mapeia os campos 'cl', 'lt', 'tp', 'ts' corretamente
-            $dto = LineDTO::fromSptrans($raw);
-
-            // O Repository usa updateOrCreate pelo 'sptrans_id',
-            // então não haverá duplicatas mesmo buscando '1', depois '10', etc.
-            $this->lineRepository->upsert($dto->toArray());
-        }
+        // Notifica o Go para realizar a sincronização em batch.
+        $this->processorService->syncLines([$term]);
     }
 
     public function searchFromApi(string $term): array
     {
-        $raw = $this->externalApiService->searchLines($term);
+        // Busca direta na API (Proxy para o Go ou consulta direta se for simples)
+        $raw = $this->processorService->syncLines([$term]);
 
         return array_map(fn($line) => LineDTO::fromSptrans($line)->toArray(), $raw);
+    }
+
+    /**
+     * DEPRECATED: Migrando para Go.
+     *
+     * @return array{
+     *   origin: array{address: string, lat: float, lng: float}|null,
+     *   lines: array
+     * }
+     */
+    public function findNearby(string $address, float $radiusKm = 1.0): array
+    {
+        /**
+         * O cálculo de Haversine em PHP com Collection::get() é lento.
+         * O Go processará isso usando PostGIS ou cálculos nativos
+         * muito mais rápidos.
+         */
+        return $this->processorService->findNearbyInGo($address, $radiusKm);
     }
 }

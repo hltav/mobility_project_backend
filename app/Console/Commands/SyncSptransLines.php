@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use App\Services\LineService;
 use Illuminate\Console\Command;
-use App\Services\ExternalApiService;
 
 class SyncSptransLines extends Command
 {
@@ -22,16 +21,9 @@ class SyncSptransLines extends Command
     /**
      * Executa o comando.
      */
-    public function handle(LineService $service, ExternalApiService $api): void
+    public function handle(LineService $service): void
     {
-        $this->info('Autenticando na SPTrans...');
-
-        if (!$api->authenticate()) {
-            $this->error('Falha na autenticação. Verifique o SPTRANS_API_TOKEN no .env.');
-            return;
-        }
-
-        $this->info('Autenticado! Iniciando sincronização...');
+        $this->info('Iniciando sincronização via serviço Go...');
 
         $termos = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 

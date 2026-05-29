@@ -13,11 +13,11 @@ class LineRepository
     public function search(?string $term, int $perPage = 15): LengthAwarePaginator
     {
         return Line::query()
-            ->when($term, fn ($q) => $q->where(function ($q) use ($term) {
+            ->when($term, fn($q) => $q->where(function ($q) use ($term) {
                 $q->where('code', 'like', "%{$term}%")
-                  ->orWhere('name', 'like', "%{$term}%")
-                  ->orWhere('origin', 'like', "%{$term}%")
-                  ->orWhere('destination', 'like', "%{$term}%");
+                    ->orWhere('name', 'like', "%{$term}%")
+                    ->orWhere('origin', 'like', "%{$term}%")
+                    ->orWhere('destination', 'like', "%{$term}%");
             }))
             ->orderBy('code')
             ->paginate($perPage);
@@ -48,5 +48,17 @@ class LineRepository
             ['sptrans_id' => $data['sptrans_id']],
             $data,
         );
+    }
+
+    /**
+     * Retorna todas as linhas que possuem coordenadas de origem preenchidas.
+     * Usado pelo Haversine para filtrar por raio.
+     */
+    public function allWithCoordinates(): \Illuminate\Support\Collection
+    {
+        return Line::query()
+            ->whereNotNull('origin_lat')
+            ->whereNotNull('origin_lng')
+            ->get();
     }
 }
