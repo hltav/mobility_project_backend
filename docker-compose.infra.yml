@@ -1,0 +1,43 @@
+version: '3.9'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mobility_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: mobility_root_password
+      MYSQL_DATABASE: mobility_project
+      MYSQL_USER: mobility_user
+      MYSQL_PASSWORD: mobility_2026
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mobility
+
+  valkey:
+    image: alpine:3.19
+    container_name: valkey
+    command: ['sh', '-c', 'while true; do sleep 3600; done']
+    environment:
+      VALKEY_ENV: development
+      VALKEY_STORAGE_PATH: /data
+    volumes:
+      - valkey_data:/data
+    networks:
+      - mobility
+
+volumes:
+  mysql_data:
+  valkey_data:
+
+networks:
+  mobility:
+    driver: bridge
