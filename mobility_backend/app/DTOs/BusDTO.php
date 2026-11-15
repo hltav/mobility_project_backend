@@ -12,7 +12,7 @@ class BusDTO
     ) {}
 
     /**
-     * Cria um DTO a partir do array mapeado pelo ExternalApiService.
+     * Cria um DTO a partir do array retornado pelo processor.
      */
     public static function fromArray(array $data): self
     {

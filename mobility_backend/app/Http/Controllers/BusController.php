@@ -12,8 +12,7 @@ class BusController extends Controller
     ) {}
 
     /**
-     * Retorna a posição em tempo real dos ônibus de uma linha.
-     * Consome diretamente a SPTrans via ExternalApiService.
+     * Retorna a posição em tempo real dos ônibus de uma linha via processor.
      */
     public function positions(int $lineId): JsonResponse
     {

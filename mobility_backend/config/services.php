@@ -40,9 +40,8 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
 
-
-    'sptrans' => [
-        'token' => env('SPTRANS_API_TOKEN', ''),
+    'processor' => [
+        'url' => env('PROCESSOR_URL', 'http://localhost:8080'),
     ],
 
 ];

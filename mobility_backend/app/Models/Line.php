@@ -32,6 +32,11 @@ class Line extends Model
     protected $hidden = [
         'created_at',
         'updated_at',
+        // PostgreSQL storage details are not additions to the existing HTTP contract.
+        'provider', 'sptrans_line_id', 'code_prefix', 'code_suffix',
+        'display_code', 'display_name', 'sptrans_direction', 'is_circular',
+        'headsign_primary_to_secondary', 'headsign_secondary_to_primary', 'headsign',
+        'origin_stop_id', 'destination_stop_id',
     ];
 
     public function favorites(): HasMany

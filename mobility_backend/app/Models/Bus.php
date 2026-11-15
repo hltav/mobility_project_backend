@@ -11,12 +11,12 @@ class Bus extends Model
     use HasFactory;
 
     protected $fillable = [
-        'line_id',
-        'prefix',       // Prefixo do veículo (SPTrans)
-        'accessible',   // Acessível para PCD?
+        'sptrans_line_id',
+        'prefix',
+        'accessible',
         'latitude',
         'longitude',
-        'updated_at',   // Última atualização de posição
+        'last_position_at',
     ];
 
     protected $casts = [

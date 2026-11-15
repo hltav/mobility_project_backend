@@ -1,9 +1,9 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Line\SearchLineRequest;
 use App\Services\LineService;
+use App\Services\ProcessorService;
 use Illuminate\Http\JsonResponse;
 use App\Models\Line;
 use Illuminate\Http\Request;
@@ -11,12 +11,10 @@ use Illuminate\Http\Request;
 class LineController extends Controller
 {
     public function __construct(
-        private readonly LineService $lineService
+        private readonly LineService       $lineService,
+        private readonly ProcessorService  $processorService,
     ) {}
 
-    /**
-     * Lista todas as linhas do banco local (paginado).
-     */
     public function index(SearchLineRequest $request): JsonResponse
     {
         $lines = $this->lineService->search($request->validated());
@@ -27,14 +25,10 @@ class LineController extends Controller
         ]);
     }
 
-    /**
-     * Busca linhas diretamente na SPTrans em tempo real.
-     * GET /api/lines/search?term=8000
-     */
     public function search(SearchLineRequest $request): JsonResponse
     {
         $term  = $request->validated('term', '');
-        $lines = $this->lineService->searchFromApi($term);
+        $lines = $this->processorService->syncLines([$term]);
 
         return response()->json([
             'message' => 'Linhas recuperadas com sucesso.',
@@ -42,17 +36,12 @@ class LineController extends Controller
         ]);
     }
 
-    /**
-     * Exibe detalhes de uma linha específica + ônibus em tempo real.
-     */
     public function show(int $id): JsonResponse
     {
         $line = $this->lineService->findWithBuses($id);
 
         if (!$line) {
-            return response()->json([
-                'message' => 'Linha não encontrada.',
-            ], 404);
+            return response()->json(['message' => 'Linha não encontrada.'], 404);
         }
 
         return response()->json([
@@ -73,35 +62,27 @@ class LineController extends Controller
         );
 
         if (!$result) {
-            return response()->json([
-                'message' => 'Linha não encontrada.',
-            ], 404);
+            return response()->json(['message' => 'Linha não encontrada.'], 404);
         }
 
         return response()->json([
             'message' => 'Paradas da linha recuperadas com sucesso.',
-            'data' => $result,
+            'data'    => $result,
         ]);
     }
 
-    /**
-     * Retorna linhas próximas ao endereço informado.
-     * GET /api/lines/nearby?address=Av+Paulista&radius_km=1.0
-     */
     public function nearby(SearchLineRequest $request): JsonResponse
     {
-        $address  = $request->validated('address', '');
-        $radius   = (float) $request->validated('radius_km', 1.0);
+        $address = $request->validated('address', '');
+        $radius  = (float) $request->validated('radius_km', 1.0);
 
         if (empty($address)) {
-            return response()->json([
-                'message' => 'O campo address é obrigatório.',
-            ], 422);
+            return response()->json(['message' => 'O campo address é obrigatório.'], 422);
         }
 
-        $result = $this->lineService->findNearby($address, $radius);
+        $result = $this->processorService->findNearbyInGo($address, $radius);
 
-        if (is_null($result['origin'])) {
+        if (is_null($result['origin'] ?? null)) {
             return response()->json([
                 'message' => 'Endereço não encontrado.',
                 'data'    => ['origin' => null, 'lines' => []],
@@ -124,11 +105,6 @@ class LineController extends Controller
         return response()->json($lines);
     }
 
-    /**
-     * Recebe coordenadas geocodificadas do Go e salva no banco.
-     * POST /api/internal/lines/update-coordinates
-     * Body: {"results": [{"id": 1, "lat": -23.5, "lng": -46.6}, ...]}
-     */
     public function updateCoordinates(Request $request): JsonResponse
     {
         $request->validate([
@@ -140,11 +116,10 @@ class LineController extends Controller
 
         $updated = 0;
         foreach ($request->input('results') as $item) {
-            $rows = Line::where('id', $item['id'])->update([
+            $updated += Line::where('id', $item['id'])->update([
                 'origin_lat' => $item['lat'],
                 'origin_lng' => $item['lng'],
             ]);
-            $updated += $rows;
         }
 
         return response()->json(['updated' => $updated]);
