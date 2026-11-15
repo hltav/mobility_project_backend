@@ -1,43 +1,49 @@
-version: '3.9'
-
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: mobility_mysql
+  postgres:
+    image: postgis/postgis:18-3.6@sha256:e84455a058f60f06dd8c40e66a2c628b8fc113d9fca0896e1f308b25b897207f
     restart: unless-stopped
+
     environment:
-      MYSQL_ROOT_PASSWORD: mobility_root_password
-      MYSQL_DATABASE: mobility_project
-      MYSQL_USER: mobility_user
-      MYSQL_PASSWORD: mobility_2026
-    ports:
-      - '3306:3306'
+      POSTGRES_DB: ${PGSQL_DATABASE:?PGSQL_DATABASE não definido}
+      POSTGRES_USER: ${PGSQL_USERNAME:?PGSQL_USERNAME não definido}
+      POSTGRES_PASSWORD: ${PGSQL_PASSWORD:?PGSQL_PASSWORD não definido}
+
     volumes:
-      - mysql_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql
+
     healthcheck:
-      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      test:
+        ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+    networks:
+      - postgresql
+
+  valkey:
+    image: valkey/valkey:7.2-alpine
+    restart: unless-stopped
+
+    volumes:
+      - valkey_data:/data
+
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - mobility
 
-  valkey:
-    image: alpine:3.19
-    container_name: valkey
-    command: ['sh', '-c', 'while true; do sleep 3600; done']
-    environment:
-      VALKEY_ENV: development
-      VALKEY_STORAGE_PATH: /data
-    volumes:
-      - valkey_data:/data
     networks:
       - mobility
 
 volumes:
-  mysql_data:
+  postgres_data:
   valkey_data:
 
 networks:
+  postgresql:
+    internal: true
+
   mobility:
     driver: bridge
