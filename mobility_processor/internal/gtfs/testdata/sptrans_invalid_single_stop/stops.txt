@@ -1,0 +1,2 @@
+stop_id,stop_name,stop_desc,stop_lat,stop_lon
+5914667,Atracadouro Mar Paulista,"Atracadouro Mar Paulista Ref.: Rua Do Mar Paulista, Altura Nº 420",-23.697687,-46.667982

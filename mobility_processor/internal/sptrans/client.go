@@ -158,10 +158,12 @@ func (c *Client) GetBusPositionsByLine(sptransLineID int) ([]BusPosition, error)
 // RawLine representa uma linha retornada pela API da SPTrans.
 type RawLine struct {
 	CL int    `json:"cl"` // sptrans_id
-	LT string `json:"lt"` // número da linha
+	LC bool   `json:"lc"` // linha circular
+	LT string `json:"lt"` // número da linha (ex: "1016")
+	TL int    `json:"tl"` // sufixo do letreiro (ex: 10, 21, 23...)
+	SL int    `json:"sl"` // sentido (1 ou 2)
 	TP string `json:"tp"` // letreiro destino principal
 	TS string `json:"ts"` // letreiro destino secundário
-	LC bool   `json:"lc"` // linha circular
 }
 
 // SearchLines busca linhas pelo termo informado.
@@ -243,4 +245,25 @@ func (c *Client) SyncLines(terms []string, workers int, onLine func(RawLine) err
 		}
 	}
 	return summary
+}
+
+// UnmarshalJSON rejects missing source identity/direction fields instead of inventing TL/SL/LC defaults.
+func (l *RawLine) UnmarshalJSON(data []byte) error {
+	var v struct {
+		CL *int   `json:"cl"`
+		LC *bool  `json:"lc"`
+		LT string `json:"lt"`
+		TL *int   `json:"tl"`
+		SL *int   `json:"sl"`
+		TP string `json:"tp"`
+		TS string `json:"ts"`
+	}
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+	if v.CL == nil || *v.CL <= 0 || v.LC == nil || strings.TrimSpace(v.LT) == "" || v.TL == nil || *v.TL < 0 || v.SL == nil || (*v.SL != 1 && *v.SL != 2) {
+		return fmt.Errorf("invalid SPTrans line: CL/LT/TL/SL/LC required")
+	}
+	*l = RawLine{CL: *v.CL, LC: *v.LC, LT: v.LT, TL: *v.TL, SL: *v.SL, TP: v.TP, TS: v.TS}
+	return nil
 }

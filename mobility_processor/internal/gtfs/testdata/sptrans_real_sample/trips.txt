@@ -1,0 +1,3 @@
+route_id,service_id,trip_id,trip_headsign,direction_id,shape_id
+6232-10,US_,6232-10-1,Pinheiros/vila Ida ,1,58919
+N137-11,USD,N137-11-0,Perus,0,71508

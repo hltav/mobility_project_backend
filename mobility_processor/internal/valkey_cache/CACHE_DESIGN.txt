@@ -1,0 +1,247 @@
+════════════════════════════════════════════════════════════════════════════════
+ DESIGN DO CACHE VALKEY / ESTRATÉGIA E INTEGRAÇÃO
+════════════════════════════════════════════════════════════════════════════════
+
+ARQUIVO DE REFERÊNCIA: schema.go (tipos, chaves, exemplos JSON)
+                       store.go (API Get/Set/Delete)
+                       ttl.go (TTLs constantes)
+
+════════════════════════════════════════════════════════════════════════════════
+1. ESTRUTURA DE CHAVES
+════════════════════════════════════════════════════════════════════════════════
+
+Hierarquia de prefixos (cache-aside pattern):
+
+├── lines:*                    (Linhas de ônibus)
+│   ├── lines:id:<sptrans_id>  (Linha por sptrans_id)
+│   ├── lines:code:<code>:dir:<dir>  (Resolve code+direction → sptrans_id)
+│   └── lines:search:<term_hash>  (Busca por termo, TTL curto)
+│
+├── stops:*                    (Paradas de ônibus)
+│   ├── stops:cp:<sptrans_code>  (Parada individual por CP)
+│   ├── stops:line:<line_id>   (Array de paradas de uma linha)
+│   └── stops:nearby:<lat>:<lng>:<r>  (Paradas próximas, TTL=6h)
+│
+├── nearby:*                   (Dados de proximidade)
+│   └── nearby:lines:<lat>:<lng>:<r>  (Linhas próximas, TTL=6h)
+│
+├── buses:*                    (Posições de ônibus)
+│   └── buses:line:<line_id>   (Posições atuais, TTL=60s)
+│
+├── geocode:*                  (Geocoding)
+│   └── geocode:addr:<addr_hash>  (Coordenadas de endereço, TTL=30d)
+│
+└── meta:*                     (Metadata)
+    └── meta:cache:version     (Versão/timestamp de sincronização)
+
+════════════════════════════════════════════════════════════════════════════════
+2. FLUXO DE CACHE (Cache-Aside Pattern)
+════════════════════════════════════════════════════════════════════════════════
+
+LEITURA:
+  Cliente (Go Handler)
+       │
+       ├─→ Cache (Valkey store.go)
+       │   ├─ HIT → return cached value
+       │   └─ MISS → ↓
+       │
+       ├─→ DB / SPTrans / Geocoding Service
+       │   └─ Fetch → value
+       │
+       └─→ Populate Cache + Return Value
+
+
+ESCRITA (Sync):
+  POST /sync ou POST /sync/stops
+       │
+       ├─→ SPTrans API
+       │   └─ Fetch dados
+       │
+       ├─→ DB (upsert, commit)
+       │   └─ Persist
+       │
+       └─→ Cache (background, não-bloqueante)
+           └─ Upsert chaves individuais + metadata
+               (goroutine de background para não atrasar resposta)
+
+
+════════════════════════════════════════════════════════════════════════════════
+3. ENDPOINTS E PONTOS DE CACHE
+════════════════════════════════════════════════════════════════════════════════
+
+┌─ GET /buses/{sptrans_id}
+│  Lê: SPTrans API (em tempo real)
+│  Cache: NO (dados muito voláteis, 60s TTL se necessário)
+│
+├─ POST /geocode
+│  Lê: cache "geocode:addr:<hash>" (miss → Google Maps → cache)
+│  Escreve: geocode:addr:* (com TTL=30 dias)
+│
+├─ POST /reverse
+│  Lê: Google Maps (reverse geocoding, sim cacheável mas menos usado)
+│  Cache: NO (por enquanto)
+│
+├─ POST /nearby
+│  Lê: Endereço (em memória, sem cache)
+│  Cache: NO (processa array enviado pelo cliente)
+│
+├─ POST /nearby/spatial  ← IMPORTANTE
+│  Lê: cache "nearby:lines:<lat>:<lng>:<r>" (miss → DB → cache)
+│  Escreve: nearby:lines:* (com TTL=6 horas)
+│
+├─ POST /distance/sort
+│  Lê: Points (em memória, sem cache)
+│  Cache: NO
+│
+├─ POST /sync  ← IMPORTANTE
+│  Lê: SPTrans API (linhas por termo)
+│  Escreve:
+│    - DB (lines table)
+│    - Cache: lines:id:<id> (TTL=60 dias)
+│    - Cache: lines:code:<code>:dir:0 (TTL=60 dias)
+│    - (background, não-bloqueante)
+│
+├─ POST /sync/stops  ← IMPORTANTE
+│  Lê: SPTrans API (paradas por linha)
+│  Escreve:
+│    - DB (bus_stops + bus_stop_line tables)
+│    - Cache: stops:line:<line_id> (TTL=30 dias)
+│    - Cache: stops:cp:<cp> (TTL=30 dias, por cada parada)
+│    - (background, não-bloqueante)
+│
+├─ GET /lines/resolve
+│  Lê: cache "lines:code:<code>:dir:<dir>" (miss → DB → cache)
+│  Escreve: lines:code:* (com TTL=60 dias)
+│
+└─ POST /stops/nearby  ← IMPORTANTE
+   Lê: cache "stops:nearby:<lat>:<lng>:<r>" (miss → DB → cache)
+   Escreve: stops:nearby:* (com TTL=6 horas)
+
+
+════════════════════════════════════════════════════════════════════════════════
+4. TTLs E ESTRATÉGIA
+════════════════════════════════════════════════════════════════════════════════
+
+Tipo de Dado          TTL        Razão
+──────────────────────────────────────────────────────────────────────────────
+lines (linhas)        60 dias    Imutáveis; reavaliadas a cada 60 dias de SPTrans
+stops (paradas)       30 dias    Mudanças com aviso prévio de ~30 dias
+buses (posições)      60 seg     Tempo real; extremamente volátil
+geocode (endereços)   30 dias    Endereços não mudam (quase nunca)
+nearby:lines          6 horas    Consultas pesadas; tolerância a dados stale
+stops:nearby          6 horas    Consultas pesadas; tolerância a dados stale
+lines:search          1 hora     Busca por termo; dados menos críticos
+
+
+════════════════════════════════════════════════════════════════════════════════
+5. INVALIDAÇÃO E WARMING
+════════════════════════════════════════════════════════════════════════════════
+
+POPULAÇÃO (Warming):
+  - POST /sync:
+    1. Busca linhas em SPTrans
+    2. Upsert em DB
+    3. (background) Popula cache "lines:id:*" e "lines:code:*:dir:0"
+
+  - POST /sync/stops:
+    1. Busca paradas em SPTrans
+    2. Upsert em DB
+    3. (background) Popula cache "stops:line:*" e "stops:cp:*"
+
+  - Geocoding:
+    1. Recebe endereço
+    2. Tenta cache "geocode:addr:*"
+    3. Se miss, geocodifica + cache
+
+INVALIDAÇÃO REATIVA:
+  - TTLs naturais expiram chaves (~soft invalidation)
+  - Para invalidação forçada (bug, mudança crítica):
+    Incrementar "meta:cache:version" → força revalidação no cliente (opcional)
+
+════════════════════════════════════════════════════════════════════════════════
+6. FALLBACK E ROBUSTEZ
+════════════════════════════════════════════════════════════════════════════════
+
+Se Valkey estiver DOWN:
+  → Cache.GetJSON(...) retorna (false, nil) silenciosamente
+  → Handler lê DB / SPTrans / Geocoding normalmente (comportamento sem cache)
+  → Sem degradação de funcionalidade, apenas mais lento
+
+Se STORE incorrer:
+  → GetJSON trata corrupção (remove arquivo, retorna miss)
+  → Nenhuma crash; continuidade garantida
+
+Estratégia de Retry:
+  → Escritas de cache são background + não-bloqueantes
+  → Se falhar, endpoint já retornou dados ao cliente
+  → Pr  óxima leitura tenta de novo (cache miss)
+
+════════════════════════════════════════════════════════════════════════════════
+7. INTEGRAÇÃO COM LARAVEL (Futuro)
+════════════════════════════════════════════════════════════════════════════════
+
+Fase 1 (Atual):
+  - Laravel → ProcessorService (HTTP) → Go Handlers
+  - Go usa cache internamente; Laravel desconhecido
+
+Fase 2 (Opcional):
+  - Laravel acessa Valkey diretamente via Redis client
+  - Consulta cache "lines:id:*" antes de chamar Go
+  - Reduz latência (pula hop HTTP)
+  - Requer compartilhar store entre Go e Laravel
+
+
+════════════════════════════════════════════════════════════════════════════════
+8. EXEMPLO PRÁTICO: CICLO DE UMA REQUISIÇÃO
+════════════════════════════════════════════════════════════════════════════════
+
+Cenário: GET /stops/nearby com lat=-23.56, lng=-46.65, radius=2km
+
+1. Client → Go Handler
+2. Handler calcula key = "stops:nearby:-2356:-4665:200" (truncado)
+3. Handler tenta cache.GetJSON(key, &result)
+   a) HIT: retorna resultado cacheado (TTL <6h)
+   b) MISS:
+       → Lê DB: "SELECT ... FROM bus_stops"
+       → Calcula distâncias em memória
+       → Formata resposta
+       → cache.SetJSON(key, result, 6*time.Hour)  ← background, sem bloqueio
+       → Retorna resultado ao client
+
+Latência esperada:
+  - Com HIT: <50ms (leitura disco/memory)
+  - Com MISS (BD): 100-500ms (depende carga DB)
+  - Primeira requisição após sync: MISS → DB, depois HITS rápidas por 6h
+
+
+════════════════════════════════════════════════════════════════════════════════
+9. OBSERVABILIDADE (Futuro)
+════════════════════════════════════════════════════════════════════════════════
+
+Métricas sugeridas:
+  - Cache hits / misses por endpoint
+  - Latência de read cache vs. DB read
+  - Tamanho total de cache em disco
+  - TTLs mais críticos (evictions)
+
+Healthcheck:
+  - /health → verifica se store está acessível
+  - Retorna status, itens armazenados, espaço em disco
+
+Logs:
+  - Log de erros ao ler/escrever cache
+  - Warning se cache estiver "quente" (muitos items expirando)
+
+
+════════════════════════════════════════════════════════════════════════════════
+RESUMO: O CACHE VOCÊ ESTÁ GUARDANDO
+════════════════════════════════════════════════════════════════════════════════
+
+✓ Dados imutáveis (linhas, paradas) → cache quente, disponível a toque
+✓ Dados de geocoding → reutilizável entre requisições
+✓ Resultados de queries espaciais pesadas → cache 6h para evitar repeats
+✓ Fallback automático se cache falhar → sem degradação funcional
+✓ Background population → não bloqueia resposta de /sync
+✓ Previsível + sem manutenção → expires naturalmente por TTL
+
+════════════════════════════════════════════════════════════════════════════════

@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"mobility_processor/internal/database"
 	"mobility_processor/internal/geocoding"
 	"mobility_processor/internal/lines"
 )
@@ -59,6 +60,9 @@ func loadEnv(path string) {
 			if os.Getenv(key) == "" {
 				os.Setenv(key, val)
 			}
+		}
+		if err := scanner.Err(); err != nil {
+			log.Printf("erro ao ler arquivo de env %s: %v", p, err)
 		}
 		return
 	}
@@ -234,11 +238,12 @@ func main() {
 }
 
 func geocodeDatabase(fresh bool, limit int) error {
-	repo, err := lines.OpenFromEnv()
+	db, err := database.OpenFromEnv(context.Background())
 	if err != nil {
 		return err
 	}
-	defer repo.Close()
+	defer db.Close()
+	repo := lines.NewRepository(db)
 
 	ctx := context.Background()
 	dbLines, err := repo.LinesForGeocoding(ctx, fresh, limit)
@@ -311,7 +316,7 @@ func uniqueOrigins(dbLines []lines.Line) []string {
 }
 
 func canUseDatabase() bool {
-	return os.Getenv("DB_DSN") != "" || (os.Getenv("DB_DATABASE") != "" && os.Getenv("DB_USERNAME") != "")
+	return os.Getenv("PGSQL_URL") != "" || (os.Getenv("PGSQL_HOST") != "" && os.Getenv("PGSQL_DATABASE") != "" && os.Getenv("PGSQL_USERNAME") != "")
 }
 
 func envBool(key string, fallback bool) bool {

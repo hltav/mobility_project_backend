@@ -1,0 +1,177 @@
+stop_id,stop_name,stop_desc,stop_lat,stop_lon
+210999,"R. Livi, 473",Ref.: R Bernarda Luiz,-23.547121,-46.700656
+211276,"R. Das Tabocas, 202",Ref.: R. Leão Coroado / R. Pascoal Vita,-23.550716,-46.697987
+610774,"R. Margarida, 415",Ref.: R Marta,-23.529214,-46.662180
+4101230,"Estr. De Taipas, 3759",Ref.: Rua Filipe Clementi,-23.433123,-46.723004
+4114385,"Av. Prof. Miguel Franchini Neto, 390",Ref.: Av. Nelson Palmas Travassos,-23.442271,-46.724229
+4114431,"R. Jairo De Almeida Machado, 390",,-23.442499,-46.726186
+4114441,"Av. Raimundo Pereira De Magalhães, 10680",,-23.448121,-46.721910
+4114464,"Av. Nelson Palma Travassos, 374",Ref.: Av. Prof. Miguel Franchini Neto,-23.441947,-46.724322
+4114481,"Av. Raimundo Pereira De Magalhães, 11033",Ref.: Estrada Do Congo / Estrada Do Corredor / Shopping Cantareira,-23.445873,-46.722451
+4114492,"Av. Raimundo Pereira De Magalhães, 11480",,-23.442251,-46.721355
+4114497,"Av. Raimundo Pereira De Magalhães, 13658",Ref.: Tv. Mauricio De Heriarte,-23.424465,-46.724687
+4114500,"Av. Raimundo Pereira De Magalhães, 11033",,-23.445525,-46.722639
+4114506,"Av. Amador Aguiar, 1050",Ref.: Condominio Residencial Parque Sam Domenico,-23.440182,-46.728997
+4114507,"Av. Amador Aguiar, 1050",Ref.: Oposto Ao ''''condominio Residencial Parque Sam Domenico'''',-23.440111,-46.729036
+4114516,"Av. Amador Aguiar, 1648",Ref.: R. Prof. Onésimo Silveira / R. Prof. Affonso José Fioravanti,-23.437672,-46.724547
+4114517,"Av. Amador Aguiar, 1648",Ref.: Estr. Do Corredor / Av. Nelsom Palma Travassos,-23.437579,-46.724697
+4114519,"R. Joana Pedroso Dos Santos, 127",Ref.: R. Mateus Fantini / Estrada De Taipas,-23.430302,-46.726619
+4114533,"Av. Amador Aguiar, 1500",,-23.438227,-46.726082
+4114534,"Av. Amador Aguiar, 1500",,-23.438212,-46.726245
+4114540,"Av. Raimundo Pereira De Magalhães, 10218",Ref.: Rua Rio Una,-23.451860,-46.718990
+4114541,"Av. Raimundo Pereira De Magalhães, 10500",Ref.: R. Charles Mion,-23.450940,-46.721052
+4114542,"R. Vilaflor, 49",Ref.: R. Praia Tipiti-mirim,-23.432144,-46.718963
+4114550,"Av. Raimundo Pereira De Magalhães, 10530",Ref.: Rua Charles Mion,-23.450595,-46.721023
+4114573,"R. Joana Pedroso Dos Santos, 809",Ref.: Rua Três Do Sangrilá,-23.424835,-46.726788
+4114584,"Av. Raimundo Pereira De Magalhães, 12011",Ref.: Av. Nelson Palma Travassos,-23.438329,-46.721506
+6114500,"R. Tácito De Almeida, 73",Ref.: Rua Ilhéus,-23.548541,-46.674696
+6201199,"R. Cavalo Marinho, 427",Ref.: R. Orço,-23.409529,-46.736266
+6201705,"R. Hamilton De Araújo, 174",,-23.400056,-46.752547
+6201706,"R. Ilha Da Gale, 6",Ref.: R. Hamilton De Araújo / Tr. Savuru,-23.399424,-46.753161
+6201708,"Av. Fiorelli Peccicacco, 193",,-23.404773,-46.736841
+6201715,"R. Pe. Manuel Campello, 366",Ref.: R. Mogeiro,-23.405860,-46.757907
+6201716,"R. Mogeiro, 443",Ref.: Av Dr Sylvio De Campos,-23.406655,-46.758758
+6201768,"Av. Fiorelli Peccicacco, 1800",Ref.: Pça Inácia Dias,-23.404430,-46.752194
+6201770,"Av. Fiorelli Peccicacco, 279",Ref.: R. Antonio José Anacleto,-23.404609,-46.738268
+6201771,"R. Crispim Do Amaral, 53",Ref.: Pça Inácia Dias,-23.403441,-46.752988
+6201780,"R. Emb. Alexandre Conty, 196",Ref.: R. Ylidio Figueiredo,-23.409246,-46.753470
+6311047,"R. Card. Arcoverde, 2026",Ref.: R Deplacerda Franco,-23.562920,-46.690639
+6311403,"R. Ferreira De Araújo, 527",Ref.: Rua Conde Silvio Alvares Penteado,-23.562644,-46.697913
+6311404,"R. Ferreira De Araújo, 221",Ref.: Av. Pedroso De Morais,-23.559453,-46.697870
+6311405,"R. Juris, 113",Ref.: Rua Dos Tamanás,-23.558197,-46.696582
+6414087,"Av. Raimundo Pereira De Magalhães, 9480",Ref.: R Agostinho De Angola,-23.459958,-46.720200
+6414089,"Av. Raimundo Pereira De Magalhães, 9418",Ref.: R Simao Ragussa,-23.457118,-46.719432
+6415247,"Av. Raimundo Pereira De Magalhães, 8886",,-23.462770,-46.721083
+6415383,"Av. Raimundo Pereira De Magalhães, 7404",Ref.: R Antonio Pais De Sande/ R S Joao Batista Da Gloria,-23.470676,-46.724652
+6415394,Ponto De Virada - 8007-10,Term. Pirituba Ref.: Calçada Administrativa,-23.486231,-46.725936
+20014908,"Pça. Elvira De Jesus Jarra, 60","Pça. Elvira De Jesus Jarra, 60 Ref.: R Doutor Luis Augusto De Queiros Aranha/ R Doutor Alberto Seabr",-23.545728,-46.708979
+20014909,R. Japiaçóia,Ref.: R Doutor Luis Augusto De Queiros Aranha/ R Doutor Alberto Seabra,-23.545906,-46.708833
+20014911,R. Alvilandia,Ref.: R Dona Elisa Moraes Mendes/ R Alvlandia,-23.545820,-46.705622
+20014914,"R. Nazareth Paulista, 32",Ref.: Pc Professora Emilia Barbosa De Lima/ R Bernarda Luiz,-23.545697,-46.702273
+20014990,"R. Lira, 158",Ref.: R Das Tabocas/ R Romeu Perrotti,-23.552567,-46.697063
+20014992,"R. Caropa, 553",Ref.: R Alfredo Piragibe/ R Miguel Rodrigues,-23.548537,-46.699472
+60016794,"Av. Mário De Andrade, 0",Ref.: Oposto Ao Memorial Da América Latina- Portal 10a,-23.527197,-46.663946
+60016801,"Av. Mário De Andrade, 0",Ref.: R Deputado Salvador Julianeli/ R Pedro Machado,-23.526709,-46.667510
+60017197,Terminal Barra Funda Lado Sul Plat. B,Term. Barra Funda Lado Sul Plat. B Ref.: Av Tomas Edson/ R Pedro Machado,-23.526330,-46.666472
+260012507,"R. Alm. Pereira Guimarães, 408",Ref.: R Itapitangui/ R Teodoro Ramos,-23.548157,-46.672973
+260012512,"Av. Arnolfo Azevedo, 231",Ref.: Pc Wendell Wilkie/ R Desembargador Paulo Passalaqua,-23.545586,-46.668811
+260016775,"Av. Pacaembu, 1702",Ref.: R Tupi/ R Itabaquara,-23.541053,-46.664663
+260016776,Pça. Charles Miller,Ref.: R Itabaquara/ Acesso A Rua Heitor De Morais,-23.543358,-46.665653
+260016851,"Av. Dr. Arnaldo, 1125",Ref.: R Cardoso De Almeida/ R Cardeal Arcoverde,-23.552566,-46.674794
+410003271,"Av. Raimundo Pereira De Magalhães, 0",Ref.: Av Raimundo Pereira De Magalhaes/ Estrada Botuquara -- Estr.clementino C.silva,-23.422996,-46.724570
+410003273,"R. Maria Da Cruz Cunha, 190",Ref.: R D. Joao Guedes De Brito/ R Sem Nome,-23.427614,-46.725494
+410003274,"R. Joana Pedroso Dos Santos, 100",Ref.: R Cisne Negro/ R Forneiro,-23.428175,-46.727117
+410003275,"R. Joana Pedroso Dos Santos, 332",Ref.: R Mauricio Albe/ R Manuel Acosta,-23.428481,-46.727046
+410003276,"R. Joana Pedroso Dos Santos, 596",Ref.: R Avestruz Petica/ Est Di Sandro,-23.426473,-46.726253
+410003283,"Av. Raimundo Pereira De Magalhães, 12495",Ref.: R Teodoro Rodrigues/ Est Das Taipas,-23.433373,-46.719971
+410003284,"Estr. De Taipas, 4036",Ref.: Av Raimundo Pereira De Magalhaes/ R Lua De Sao Jorge,-23.433943,-46.720024
+410003285,"Estr. De Taipas, 3784",Ref.: Est De Taipas/ R Agripiano Barros,-23.433274,-46.722844
+410003286,"Estr. De Taipas, 3610",Ref.: R S De Jorge/ Ve Bobby Sands,-23.432432,-46.724315
+410003287,"Estr. De Taipas, 3581",Ref.: R Antonio Moniz Barreiros/ R Sem Nome,-23.432215,-46.724504
+410003288,"Estr. De Taipas, 3421",Ref.: R Joana Pedroso Dos Santos/ R Sem Nome,-23.431472,-46.725912
+410003289,"Estr. De Taipas, 3414",Ref.: Ve Bobby Sands/ Est De Taipas,-23.431539,-46.725948
+410003290,"R. Joana Pedroso Dos Santos, 154",Ref.: R Mateus Fantini/ Est De Taipas,-23.430135,-46.726665
+410003383,"Av. Raimundo Pereira De Magalhães, 10008",Ref.: R Colonial Do Irai/ R Rio Una,-23.452373,-46.718559
+410003586,"Av. Raimundo Pereira De Magalhães, 12370",Ref.: Av. Dep.cantidio Sampaio/ Est. De Taipas ( Atacadão),-23.434825,-46.719851
+410003587,"Av. Raimundo Pereira De Magalhães, 12163",Ref.: Av Nelson Palma Travassos/ Est De Taipas,-23.436606,-46.720729
+410003588,"Av. Raimundo Pereira De Magalhães, 12242",Ref.: Av Nelson Palma Travassos/ Est De Taipas,-23.437110,-46.720836
+410003593,Av. Nsa. Sra. Da Paz,Ref.: Av Raimundo Pereira De Magalhaes/ Av Nelson Palma Travassos - Oposto Ao Sonda Supermercados,-23.441184,-46.721696
+410003594,Av. Nsa. Sra. Da Paz,Ref.: Av Raimundo Pereira De Magalhaes/ R Prf. Nobil Marcacini,-23.441101,-46.721997
+410003595,"R. Prof. Nobil Marcacini, 200",Ref.: Av Nelson Palma Travassos/ R Sem Nome,-23.440419,-46.724557
+410003596,"R. Prof. Nobil Marcacini, 200",Ref.: Pc Marcus Franca Torres/ Av Nsra Da Paz,-23.440510,-46.724468
+410003597,"R. Jairo De Almeida Machado, 395",Ref.: Av Prf. Miguel Franchini Neto/ R Sem Nome,-23.442447,-46.726078
+410003599,"Av. Amador Aguiar, 1232",Ref.: Rua Professor Onesimo Silveira / Oposto Ao Villagio Di Vicenza,-23.440042,-46.727494
+410003600,"Av. Amador Aguiar, 1232",Ref.: R Jairo De Almeida Machado/ R Prf. Onesimo Silveira,-23.440179,-46.727465
+410003601,"Av. Amador Aguiar, 867",Ref.: R Jairo De Almeida Machado/ R Prf. Onesimo Silveira,-23.441156,-46.730104
+410003602,"Av. Amador Aguiar, 866",Ref.: R Jairo De Almeida Machado/ R Prf. Onesimo Silveira,-23.441117,-46.729862
+410003603,"Av. Amador Aguiar, 570",Ref.: R Jairo De Almeida Machado/ R Prf. Onesimo Silveira,-23.443276,-46.729638
+410003604,"Av. Amador Aguiar, 570",Ref.: R Jairo De Almeida Machado/ R Prf. Onesimo Silveira,-23.443135,-46.729630
+410003605,"R. Jairo De Almeida Machado, 221",Ref.: R Prf. Onesimo Silveira/ Av Amador Aguiar,-23.442526,-46.727772
+410003606,"R. Jairo De Almeida Machado, 220",Ref.: Av Amador Aguiar/ Av Prf. Miguel Franchini Neto,-23.442681,-46.727742
+410003607,"Av. Raimundo Pereira De Magalhães, 11478",Ref.: Av Nelson Palma Travassos/ Av Nsra Da Paz,-23.442366,-46.721680
+410003610,"Av. Raimundo Pereira De Magalhães, 10680",Ref.: R Charles Mion/ R Sem Nome,-23.448434,-46.721683
+440014681,"R. Card. Arcoverde, 103",Ref.: R Arruda Alvim/ Av Doutor Arnaldo,-23.553323,-46.674601
+440014682,"R. Card. Arcoverde, 508",Ref.: R Alves Guimaraes/ R Capote Valente,-23.555208,-46.677652
+440014683,"R. Card. Arcoverde, 950",Ref.: Pc Benedito Calixto/ R Henrique Schaumann,-23.557548,-46.681586
+620003097,"Av. Dr. Sylvio De Campos, 375",Ref.: R Aguas Claras Do Sul/ R Mogeiro,-23.407004,-46.757777
+620003098,"Av. Dr. Sylvio De Campos, 191",Ref.: R Antonio Maia/ R Juvencio De Araujo Figueiredo,-23.406658,-46.755660
+620003099,Viad. Da. Mora Guimarães,Ref.: R Joaquim De Sousa/ R Bernardo Jose De Lorena,-23.404880,-46.750657
+620003100,Viad. Dep. Ulisses Guimarães,Ref.: Vd. Dep Ulisses Guimaraes/ R Sem Nome,-23.404726,-46.750916
+620003105,"Av. Fiorelli Peccicacco, 889",Ref.: R Cacado/ Vla Joaquim Verissimo Neto,-23.404988,-46.743468
+620003106,"Av. Fiorelli Peccicacco, 755",Ref.: R Bem-aceito/ R Tomas Xavier De Almeida,-23.404883,-46.741958
+620003107,"Av. Fiorelli Peccicacco, 738",Ref.: R Ipumirim/ R Julio De Oliveira,-23.404827,-46.742169
+620003108,"Av. Fiorelli Peccicacco, 413",Ref.: R. Julio De Oliveira,-23.404637,-46.739014
+620003109,"Av. Fiorelli Peccicacco, 279",Ref.: R Julio De Oliveira/ R Canhoba,-23.404738,-46.738187
+620003126,"R. Crispim Do Amaral, 204",Ref.: R Antonio De Padua Dias/ R Dr. Joao Rodrigues De Abreu,-23.401895,-46.753061
+620003127,"R. Crispim Do Amaral, 239",Ref.: R Antonio De Padua Dias/ R Dr. Joao Rodrigues De Abreu,-23.401684,-46.753134
+620003139,"R. Ilha Da Gale, 8",Ref.: R Guilherme Correia De Melo/ R Sem Nome,-23.399230,-46.752326
+620003140,"R. Clovis Cavalcanti, 43",Ref.: R Bananal Do Rio/ R Antonio De Padua Dias,-23.400996,-46.751970
+620003141,"R. Clovis Cavalcanti, 24",Ref.: R Antonio De Padua Dias/ R Bananal Do Rio,-23.401153,-46.751952
+620003142,"R. Felipe Cardoso De Campos, 455",Ref.: R Ximburetinga/ R Horacio Cartier,-23.398632,-46.751807
+620003144,"R. Felipe Cardoso De Campos, 650",Ref.: R Irituia/ R Sem Nome,-23.399429,-46.749481
+620003145,"R. Felipe Cardoso De Campos, 641",Ref.: R Irituia/ R Sem Nome,-23.399432,-46.749285
+620003146,"R. Felipe Cardoso De Campos, 728",Ref.: R Irituia/ R Sem Nome,-23.399895,-46.748255
+620003147,R. Almofada,Ref.: R Estevan Ribeiro Rezende/ R Irituia,-23.400265,-46.746895
+620003148,"R. Estevan Ribeiro Rezende, 531",Ref.: R Alagoa Nova/ R Cesario De Miranda Ribeiro,-23.400370,-46.745979
+620003149,"R. Estevan Ribeiro Rezende, 558",Ref.: R Alagoa Nova/ R Cesario De Miranda Ribeiro,-23.400409,-46.745742
+620003170,"R. Canhoba, 297",Ref.: R Falero/ R Elisio Fonseca,-23.406828,-46.741438
+620003171,"R. Canhoba, 334",Ref.: R Cavalo Marinho/ R Eleusis,-23.406876,-46.741054
+620003172,"R. Canhoba, 514",Ref.: R Cavalo Marinho/ R Eleusis,-23.406666,-46.739071
+620003173,"R. Canhoba, 551",Ref.: R Falero/ R Sem Nome,-23.406508,-46.738739
+620003174,"R. Canhoba, 755",Ref.: R Dedalion/ R Fiorelli Peccicacco,-23.405262,-46.736597
+620003175,"R. Canhoba, 810",Ref.: R Fiorelli Peccicacco/ R Demifonte,-23.405224,-46.736507
+620003176,"R. Cavalo Marinho, 436",Ref.: R Dedalion/ R Sem Nome,-23.409974,-46.736411
+620003177,"R. Cavalo Marinho, 641",Ref.: R Sem Nome/ R Sem Nome,-23.411148,-46.737623
+620003178,"R. Cavalo Marinho, 682",Ref.: R Dedalion/ R Sem Nome,-23.411325,-46.738015
+620003179,"R. Cavalo Marinho, 878",Ref.: Vel Oito/ Vel Sete,-23.411840,-46.739708
+620003180,"R. Cavalo Marinho, 843",Ref.: R Sem Nome/ R Sem Nome,-23.411997,-46.739446
+620003181,"R. Cavalo Marinho, 1169",Ref.: R Creonte/ R Jacunaum,-23.410983,-46.742011
+620003182,"R. Cavalo Marinho, 1198",Ref.: R Creonte/ R Carcino,-23.410770,-46.741987
+620003183,"R. Carcino, 216",Ref.: R Cavalo Marinho/ R Sem Nome,-23.409863,-46.741655
+620003194,"Viad. Dep. Ulisses Guimarães, 25",Ref.: R Antonio Maia/ R Joaquim Antonio Arruda,-23.406274,-46.755455
+620003195,Pça. Inácia Dias,Ref.: Vd. Dep Ulisses Guimaraes/ Pc Inacio Dias -- Estação De Perus,-23.404992,-46.753291
+620003196,"R. Bernardo José De Lorena, 15",Ref.: Pc Inacio Dias/ R Sem Nome,-23.405188,-46.752844
+620003197,"R. Mogeiro, 136",Ref.: R Rosa Do Japao/ R Luis Carlos De Assumpcao,-23.409259,-46.757936
+620003198,"R. Mogeiro, 199",Ref.: R Rosa Do Japao/ R Pe. Diogo Antonio Feijo,-23.410074,-46.758041
+620003200,"Estr. S. Paulo/jundiaí, 13",Ref.: R Joaquim Xavier Pinheiro/ R Goncalves De Andrade,-23.411575,-46.757193
+620003211,"R. Emb. Alexandre Conty, 582",Ref.: R Rafael Di Sandro/ R Aguas Claras Do Sul,-23.409389,-46.756816
+620003212,Estr. S. Paulo/jundiaí,Ref.: R Sem Nome/ R Pe. Diogo Antonio Feijo,-23.415866,-46.756271
+620003214,"Estr. S. Paulo/jundiaí, 580",Ref.: R Papagaio/ Av Pavao,-23.420589,-46.754590
+620003217,"Av. Pavão, 103",Ref.: R Tico Tico/ R Juriti,-23.417650,-46.752287
+620003220,"Av. Pavão, 12",Ref.: Rua Juriti (canários) Rua Inca Cor De Rosa (trav. Dos Manacás),-23.415342,-46.751410
+620003225,"R. Recanto Dos Humildes, 85",Ref.: R Sem Nome/ Tv Vitoria Regia -- Antigo Nº 90,-23.411559,-46.750121
+620003226,"R. Recanto Dos Humildes, 8",Ref.: Tr. Jasmim Do Campo / Tr. Antule Branco - Antigo Nº 50.,-23.410350,-46.749916
+620003264,Av. Raimundo Pereira De Magalhães,Ref.: Rua Sem Nome -- Sent. Rodoanel Mario Covas,-23.414999,-46.731872
+620003265,"Av. Raimundo Pereira De Magalhães, 15646",Ref.: Próx. Pedreira Juruaçu,-23.410996,-46.734006
+620003266,"Av. Raimundo Pereira De Magalhães, 14000",Ref.: Construcap Pedreira (via Eduard Kirst),-23.419397,-46.730290
+620003267,"Av. Raimundo Pereira De Magalhães, 14000",Ref.: Construcap Pedreira (via Eduard Kirst),-23.419298,-46.730623
+620003268,"Av. Raimundo Pereira De Magalhães, 15000",Ref.: Est Di Sandro,-23.421974,-46.728699
+620003269,"Av. Raimundo Pereira De Magalhães, 14999",Ref.: Estrada Botuquara,-23.421887,-46.728568
+630012852,"R. Card. Arcoverde, 1332",Ref.: R Joaquim Antunes/ R Conego Eugenio Leite,-23.559425,-46.684748
+630012853,"R. Card. Arcoverde, 1674",Ref.: R Fradique Coutinho/ R Mateus Grou,-23.561104,-46.687532
+630012856,Cunha Gago,"R. Card. Arcoverde, 2246 Ref.: R Cunha Gago/ Av Pedroso De Morais",-23.564035,-46.692382
+630012914,Parada 1 - Padre Carvalho,"R. Sumidouro, 68 Ref.: R Padre Carvalho/ R Fernao Dias",-23.565233,-46.696149
+630014987,"R. Natingui, 1001",Ref.: R Dos Moras/ R Sagarana,-23.555455,-46.697117
+630014989,"R. Natingui, 759",Ref.: R Colonizacao/ R Lira,-23.553532,-46.695974
+640000360,Pinel B/C,"Av. Raimundo Pereira De Magalhães, 5214 Ref.: R Mal. Mendes De Morais/ Ac Lateral Viaduto",-23.485948,-46.724827
+640000365,"Av. Raimundo Pereira De Magalhães, 8335",Ref.: R Marilac/ R Trinta E Oito (v. Mirante-pir),-23.463283,-46.721060
+640000366,"Av. Raimundo Pereira De Magalhães, 8342",Ref.: R Trinta E Oito (v. Mirante-pir)/ R Marilac,-23.463087,-46.721028
+640000367,"Av. Raimundo Pereira De Magalhães, 8255",Ref.: R Gov. Joao Da Silva De Sousa/ R Sem Nome,-23.465394,-46.721999
+640000368,"Av. Raimundo Pereira De Magalhães, 8198",Ref.: R Gov. Joao Da Silva De Sousa/ R Sem Nome,-23.465697,-46.721991
+640000369,"Av. Raimundo Pereira De Magalhães, 8064",Ref.: R Silvestre Francisco/ R Acutuma,-23.467602,-46.724568
+640000370,"Av. Raimundo Pereira De Magalhães, 7808",Ref.: R Silvestre Francisco/ R Acutuma,-23.467753,-46.724479
+640000371,"Av. Raimundo Pereira De Magalhães, 7405",Ref.: R Antonio Pais De Sande/ R S Joao Batista Da Gloria,-23.470789,-46.724863
+640000373,"Av. Raimundo Pereira De Magalhães, 7181",Ref.: Av Cdor. Feiz Zarzur/ R Cesare Formichi,-23.472295,-46.725745
+640000374,"Av. Raimundo Pereira De Magalhães, 6744",Ref.: R Goncalves De Barros/ R Sem Nome,-23.474939,-46.727779
+640000375,"Av. Raimundo Pereira De Magalhães, 6700",Ref.: R Goncalves De Barros/ R Sem Nome,-23.475553,-46.727662
+640000376,"Av. Raimundo Pereira De Magalhães, 6295",Ref.: R Talofitos/ R Sem Nome,-23.478823,-46.727574
+640000377,"Av. Raimundo Pereira De Magalhães, 6254",Ref.: R Manuel Ribeiro Rosa/ Tv Rosa Aparecida Moraes,-23.479142,-46.727050
+640000378,"Av. Raimundo Pereira De Magalhães, 5893",Ref.: R Fragaria Rosea/ Av Menotti Laudisio,-23.481180,-46.724155
+640000379,"Av. Raimundo Pereira De Magalhães, 5886",Ref.: Tv Rosa Aparecida Moraes/ R Cecilia Davy,-23.480978,-46.724181
+640000380,"Av. Raimundo Pereira De Magalhães, 5658",Ref.: Av Menotti Laudisio/ R Coracao De Bugre,-23.482796,-46.722878
+640000381,Guerino C/B,"Av. Raimundo Pereira De Magalhães, 5435 Ref.: R Coracao De Bugre/ Av Miguel De Castro",-23.484550,-46.723093
+640000382,Guerino B/C,"Av. Raimundo Pereira De Magalhães, 5420 Ref.: Av Miguel De Castro/ R Mal. Mendes De Morais",-23.484536,-46.722711
+640000525,Terminal Pirituba,Term. Pirituba Ref.: Av Dr. Felipe Pinel/ Terminal Pirituba,-23.486374,-46.726322
+640000529,Terminal Pirituba,Ref.: Av Dr. Felipe Pinel/ Terminal Pirituba,-23.486850,-46.726762
+640003385,"Av. Raimundo Pereira De Magalhães, 9684",Ref.: R Roberto Correia/ R Agostinho Angola,-23.458030,-46.719102
+700016779,"Av. Pacaembu, 820",Ref.: R Doutor Candido Espinheira/ R Francisco Estacio Fortes,-23.533747,-46.661903

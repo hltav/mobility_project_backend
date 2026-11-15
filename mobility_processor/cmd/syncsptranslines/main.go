@@ -11,6 +11,7 @@ import (
 
 	"github.com/joho/godotenv"
 
+	"mobility_processor/internal/database"
 	"mobility_processor/internal/lines"
 	"mobility_processor/internal/sptrans"
 )
@@ -27,11 +28,12 @@ func main() {
 		log.Fatal("SPTRANS_API_TOKEN não definido")
 	}
 
-	repo, err := lines.OpenFromEnv()
+	db, err := database.OpenFromEnv(context.Background())
 	if err != nil {
 		log.Fatalf("Erro ao abrir banco: %v", err)
 	}
-	defer repo.Close()
+	defer db.Close()
+	repo := lines.NewRepository(db)
 
 	client, err := sptrans.NewClient(token)
 	if err != nil {

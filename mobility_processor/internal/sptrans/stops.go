@@ -37,8 +37,8 @@ func (c *Client) SearchStops(term string) ([]Stop, error) {
 	return stops, nil
 }
 
-// getStopsByLine busca as paradas de uma linha específica.
-func (c *Client) getStopsByLine(lineID int) ([]Stop, error) {
+// GetStopsByLine busca as paradas de uma linha específica.
+func (c *Client) GetStopsByLine(lineID int) ([]Stop, error) {
 	q := url.Values{"codigoLinha": {fmt.Sprintf("%d", lineID)}}
 	body, err := c.get("/Parada/BuscarParadasPorLinha", q)
 	if err != nil {
@@ -228,7 +228,7 @@ func (c *Client) GetAllStops(workers int, onProgress func(batch []Stop)) (StopsF
 		go func() {
 			defer wg2.Done()
 			for lineID := range lineIDsCh {
-				stops, err := c.getStopsByLine(lineID)
+				stops, err := c.GetStopsByLine(lineID)
 				stopsCh <- stopResult{lineID: lineID, stops: stops, err: err}
 			}
 		}()
@@ -271,4 +271,24 @@ func (c *Client) GetAllStops(workers int, onProgress func(batch []Stop)) (StopsF
 		Errors:     errCount,
 		Elapsed:    time.Since(start),
 	}, nil
+}
+
+// UnmarshalJSON preserves valid zero coordinates while rejecting absent coordinates.
+// Official CP/py/px stay in the input adapter and never become GTFS identities.
+func (s *Stop) UnmarshalJSON(data []byte) error {
+	var v struct {
+		CP  *int     `json:"cp"`
+		NP  string   `json:"np"`
+		Ed  string   `json:"ed"`
+		Lat *float64 `json:"py"`
+		Lng *float64 `json:"px"`
+	}
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+	if v.CP == nil || *v.CP <= 0 || v.NP == "" || v.Lat == nil || v.Lng == nil || *v.Lat < -90 || *v.Lat > 90 || *v.Lng < -180 || *v.Lng > 180 {
+		return fmt.Errorf("invalid SPTrans stop: CP/name/py/px required")
+	}
+	*s = Stop{CP: *v.CP, NP: v.NP, Ed: v.Ed, Lat: *v.Lat, Lng: *v.Lng}
+	return nil
 }
