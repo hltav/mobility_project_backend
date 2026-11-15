@@ -1,0 +1,56 @@
+# Runtime configuration must never enter any build stage.
+**/.env
+**/.env.*
+**/*.env
+**/.envrc
+!**/.env.example
+
+# Authentication material, local credentials and private keys.
+**/auth.json
+**/.npmrc
+**/.netrc
+**/.git-credentials
+**/cookies.txt
+**/cookies*.txt
+**/*.key
+**/*.pem
+**/*.p12
+**/*.pfx
+**/*.jks
+**/*.keystore
+**/id_rsa*
+**/id_ed25519*
+**/.ssh
+**/.aws
+**/secrets
+**/credentials
+**/*credentials*.json
+**/*service-account*.json
+**/*service_account*.json
+**/.docker/config.json
+
+# Local tooling, dependency caches and generated artifacts.
+**/.git
+**/.codex
+**/.codex_local
+**/.vscode
+**/.idea
+**/.cspell
+**/node_modules
+**/*.log
+**/*.sql.gz
+**/*.dump
+**/*.sqlite
+**/*.sqlite-*
+**/.phpunit*
+public/hot
+public/storage
+public/build
+
+# Generated config can contain secrets; storage can contain sessions/user files.
+bootstrap/cache/**
+!bootstrap/cache/.gitignore
+storage/**
+
+# Keep vendor: the existing Vite CSS sources include Laravel pagination views.
+# Dependencies are installed by Composer in the PHP build stage as before.

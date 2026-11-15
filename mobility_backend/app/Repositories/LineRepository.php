@@ -39,26 +39,4 @@ class LineRepository
         return Line::where('sptrans_id', $sptransId)->first();
     }
 
-    /**
-     * Cria ou atualiza uma linha (usado no sync com SPTrans).
-     */
-    public function upsert(array $data): Line
-    {
-        return Line::updateOrCreate(
-            ['sptrans_id' => $data['sptrans_id']],
-            $data,
-        );
-    }
-
-    /**
-     * Retorna todas as linhas que possuem coordenadas de origem preenchidas.
-     * Usado pelo Haversine para filtrar por raio.
-     */
-    public function allWithCoordinates(): \Illuminate\Support\Collection
-    {
-        return Line::query()
-            ->whereNotNull('origin_lat')
-            ->whereNotNull('origin_lng')
-            ->get();
-    }
 }

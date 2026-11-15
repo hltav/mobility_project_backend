@@ -1,0 +1,5 @@
+stop_id,stop_code,stop_name,stop_desc,stop_lat,stop_lon,location_type,parent_station,wheelchair_boarding
+STN,,Station,Station description,-23.55,-46.63,1,,0
+000123,P-001,Stop A,Description A,-23.55,-46.63,0,STN,1
+S-B,P-002,Stop B,Description B,-23.551,-46.631,0,,
+BA,,Boarding area,,,,4,000123,

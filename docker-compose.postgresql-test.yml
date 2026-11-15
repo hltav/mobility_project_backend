@@ -1,0 +1,185 @@
+# Standalone test project. Do not merge with the application/infra Compose files.
+# Supply only an explicit test configuration via --env-file; never the real .env.
+# Definitions only: no database, schema, role or migration provisioning is automated
+# beyond the image's normal first-init creation of POSTGRES_DB when later started.
+name: open-transit-tests
+
+x-php-tools: &php-tools
+  profiles: [tools]
+  build:
+    context: ./mobility_backend
+    target: postgres-tools
+  read_only: true
+  user: "${TEST_LOCAL_UID:-1000}:${TEST_LOCAL_GID:-1000}"
+  working_dir: /workspace
+  tmpfs:
+    - /tmp:rw,nosuid,nodev,size=256m
+  volumes:
+    # Selected paths only: do not expose the application's real .env or storage.
+    - ./mobility_backend/app:/workspace/app:ro
+    - ./mobility_backend/bootstrap/app.php:/workspace/bootstrap/app.php:ro
+    - ./mobility_backend/bootstrap/providers.php:/workspace/bootstrap/providers.php:ro
+    - ./mobility_backend/config:/workspace/config:ro
+    - ./mobility_backend/database:/workspace/database:ro
+    - ./mobility_backend/resources:/workspace/resources:ro
+    - ./mobility_backend/routes:/workspace/routes:ro
+    - ./mobility_backend/tests:/workspace/tests:ro
+    - ./mobility_backend/vendor:/workspace/vendor:ro
+    - ./mobility_backend/artisan:/workspace/artisan:ro
+    - ./mobility_backend/composer.json:/workspace/composer.json:ro
+    - ./mobility_backend/composer.lock:/workspace/composer.lock:ro
+    - ./mobility_backend/phpunit.postgresql.xml:/workspace/phpunit.postgresql.xml:ro
+    - ./mobility_backend/docker/postgresql-tools.sh:/workspace/docker/postgresql-tools.sh:ro
+    - ./mobility_backend/docker/check-test-cluster.php:/workspace/docker/check-test-cluster.php:ro
+  environment: &php-environment
+    APP_ENV: testing
+    APP_DEBUG: "false"
+    # Public test-only key; no deployed APP_KEY is loaded or generated.
+    APP_KEY: "base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    APP_CONFIG_CACHE: /tmp/config.php
+    APP_SERVICES_CACHE: /tmp/services.php
+    APP_PACKAGES_CACHE: /tmp/packages.php
+    VIEW_COMPILED_PATH: /tmp/views
+    LARAVEL_STORAGE_PATH: /tmp/storage
+    LOG_CHANNEL: stderr
+    DB_CONNECTION: pgsql
+    DB_URL: ""
+    PGSQL_URL: ""
+    PGSQL_HOST: postgres
+    PGSQL_PORT: "5432"
+    PGSQL_DATABASE: open_transit_schema_test
+    PGSQL_SSLMODE: disable
+    CACHE_STORE: array
+    SESSION_DRIVER: array
+    QUEUE_CONNECTION: sync
+    BCRYPT_ROUNDS: "4"
+    POSTGRES_STAGE1_TESTS: "1"
+    TEST_PG_EXECUTE: "0"
+    TEST_PG_MODE: tests
+    TEST_PG_CLUSTER_ID: "${TEST_PG_CLUSTER_ID:?Configure the provisioned test cluster marker}"
+  # Version diagnostics are harmless; any database command needs explicit opt-in.
+  entrypoint:
+    - /bin/sh
+    - -ec
+    - |
+      export PGSQL_PASSWORD="$$(cat /run/secrets/test_password)"
+      exec /bin/sh /workspace/docker/postgresql-tools.sh "$$@"
+    - postgres-test-tools
+  command: [php, --version]
+  depends_on:
+    postgres:
+      condition: service_healthy
+  networks: [test_postgresql]
+
+services:
+  postgres:
+    image: postgis/postgis:18-3.6@sha256:e84455a058f60f06dd8c40e66a2c628b8fc113d9fca0896e1f308b25b897207f
+    restart: "no"
+    environment:
+      POSTGRES_DB: open_transit_test
+      POSTGRES_USER: "${TEST_PG_ADMIN_USER:?Configure the dedicated test administrator}"
+      POSTGRES_PASSWORD_FILE: /run/secrets/test_admin_password
+    secrets: [test_admin_password]
+    volumes:
+      - postgres_test_data:/var/lib/postgresql
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks:
+      test_postgresql:
+        aliases: [postgres]
+    labels:
+      org.open-transit.environment: test
+
+  laravel-tests:
+    <<: *php-tools
+    environment:
+      <<: *php-environment
+      PGSQL_USERNAME: "${TEST_PG_LARAVEL_USER:?Configure the dedicated Laravel test login}"
+    secrets:
+      - source: test_laravel_password
+        target: test_password
+
+  schema-tools:
+    <<: *php-tools
+    profiles: [provision]
+    environment:
+      <<: *php-environment
+      PGSQL_USERNAME: "${TEST_PG_ADMIN_USER:?Configure the dedicated test administrator}"
+      POSTGRES_STAGE1_TESTS: "0"
+      TEST_PG_MODE: provision
+      TEST_PG_PROVISION: "0"
+    secrets:
+      - source: test_admin_password
+        target: test_password
+    # No default installation/migration. An explicit approved command is required.
+
+  processor-tests:
+    profiles: [tools]
+    build:
+      context: ./mobility_processor
+      target: processor-tools
+    read_only: true
+    working_dir: /workspace
+    tmpfs:
+      - /tmp:rw,exec,nosuid,nodev,size=1g
+    volumes:
+      - ./mobility_processor/cmd:/workspace/cmd:ro
+      - ./mobility_processor/internal:/workspace/internal:ro
+      - ./mobility_processor/sql:/workspace/sql:ro
+      - ./mobility_processor/go.mod:/workspace/go.mod:ro
+      - ./mobility_processor/go.sum:/workspace/go.sum:ro
+      - ./mobility_processor/docker/postgresql-tools.sh:/workspace/docker/postgresql-tools.sh:ro
+    environment:
+      DB_CONNECTION: pgsql
+      PGSQL_URL: ""
+      PGSQL_HOST: postgres
+      PGSQL_PORT: "5432"
+      PGSQL_DATABASE: open_transit_test
+      PGSQL_USERNAME: "${TEST_PG_PROCESSOR_USER:?Configure the dedicated Go test login}"
+      PGSQL_SSLMODE: disable
+      PROCESSOR_POSTGRES_TESTS: "1"
+      TEST_PG_EXECUTE: "0"
+      TEST_PG_MODE: tests
+      TEST_PG_CLUSTER_ID: "${TEST_PG_CLUSTER_ID:?Configure the provisioned test cluster marker}"
+      GOCACHE: /tmp/go-build
+      GOTMPDIR: /tmp
+      CGO_ENABLED: "0"
+      GOFLAGS: -mod=readonly
+    secrets:
+      - source: test_processor_password
+        target: test_password
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        export PGSQL_PASSWORD="$$(cat /run/secrets/test_password)"
+        exec /bin/sh /workspace/docker/postgresql-tools.sh "$$@"
+      - processor-test-tools
+    command: [go, version]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [test_postgresql]
+
+secrets:
+  test_admin_password:
+    file: "${TEST_PG_ADMIN_PASSWORD_FILE:?Provide a separate test administrator password file}"
+  test_laravel_password:
+    file: "${TEST_PG_LARAVEL_PASSWORD_FILE:?Provide a separate Laravel test password file}"
+  test_processor_password:
+    file: "${TEST_PG_PROCESSOR_PASSWORD_FILE:?Provide a separate Go test password file}"
+
+volumes:
+  postgres_test_data:
+    labels:
+      org.open-transit.environment: test
+
+networks:
+  test_postgresql:
+    internal: true
+    labels:
+      org.open-transit.environment: test

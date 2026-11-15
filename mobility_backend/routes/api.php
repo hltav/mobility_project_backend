@@ -14,6 +14,16 @@ Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
 });
 
+Route::prefix('admin')->group(function () {
+    Route::post('/sync/valkey', function () {
+        $processor = app(\App\Services\ProcessorService::class);
+        // Dispara o sync completo no Go
+        \Illuminate\Support\Facades\Http::timeout(5)
+            ->post(config('services.processor.url') . '/admin/sync/valkey', []);
+        return response()->json(['status' => 'started']);
+    });
+});
+
 // Geocodificação
 Route::post('/geocode', [GeocodingController::class, 'geocode']);
 Route::get('/geocode/reverse', [GeocodingController::class, 'reverse']); // novo

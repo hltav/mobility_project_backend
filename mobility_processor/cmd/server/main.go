@@ -1,53 +1,22 @@
 package main
 
 import (
-	"bufio"
+	"context"
 	"log"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/joho/godotenv"
 
 	"mobility_processor/internal/api"
+	"mobility_processor/internal/database"
+	"mobility_processor/internal/lines"
 	"mobility_processor/internal/sptrans"
+	"mobility_processor/internal/stops"
+	cache "mobility_processor/internal/valkey_cache"
 )
 
-// loadEnv lê um arquivo .env e seta as variáveis no processo,
-// sem sobrescrever variáveis já definidas no ambiente.
-func loadEnv(path string) {
-	f, err := os.Open(path)
-	if err != nil {
-		return // arquivo não existe, sem problema
-	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-
-		// ignora comentários e linhas vazias
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) != 2 {
-			continue
-		}
-
-		key := strings.TrimSpace(parts[0])
-		val := strings.Trim(strings.TrimSpace(parts[1]), `"'`)
-
-		// só seta se ainda não estiver definida
-		if os.Getenv(key) == "" {
-			os.Setenv(key, val)
-		}
-	}
-}
-
 func main() {
-	// Sobe dois níveis: cmd/server/main.go → raiz do projeto
 	godotenv.Load("../.env")
 
 	token := os.Getenv("SPTRANS_API_TOKEN")
@@ -60,13 +29,30 @@ func main() {
 		port = "8080"
 	}
 
-	client, err := sptrans.NewClient(token)
+	sptransClient, err := sptrans.NewClient(token)
 	if err != nil {
 		log.Fatalf("Erro ao criar cliente SPTrans: %v", err)
 	}
 
+	valkeyClient, err := cache.NewClientFromEnv()
+	if err != nil {
+		log.Fatalf("Erro ao conectar no Valkey: %v", err)
+	}
+	defer valkeyClient.Close()
+
+	db, err := database.OpenFromEnv(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+	if err := database.CheckSchema(context.Background(), db); err != nil {
+		log.Fatal(err)
+	}
+	lineRepo := lines.NewRepository(db)
+	stopRepo := stops.NewRepository(db)
+
 	mux := http.NewServeMux()
-	handler := api.NewHandler(client)
+	handler := api.NewHandler(sptransClient, lineRepo, stopRepo, valkeyClient)
 	handler.RegisterRoutes(mux)
 
 	log.Printf("[mobility-processor] ouvindo em :%s", port)

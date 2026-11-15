@@ -1,11 +1,18 @@
 *.log
 .DS_Store
 .env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
 .env.backup
 .env.production
 .phpactor.json
 .phpunit.result.cache
 /.codex
+/.codex_local
+/.cspell
 /.cursor/
 /.idea
 /.nova
@@ -24,3 +31,4 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+/.codex_local/postgresql/

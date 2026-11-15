@@ -1,0 +1,221 @@
+════════════════════════════════════════════════════════════════════════════════
+ GUIA DE INTEGRAÇÃO RÁPIDA — CHECKLISTS POR TIPO DE HANDLER
+════════════════════════════════════════════════════════════════════════════════
+
+📌 REFERÊNCIA RÁPIDA: Sempre use as funções KeyFor* de schema.go, nunca formats.
+
+════════════════════════════════════════════════════════════════════════════════
+🔍 PADRÃO: HANDLER DE LEITURA (Cache-Aside)
+════════════════════════════════════════════════════════════════════════════════
+
+```go
+func (h *Handler) MyReadEndpoint(w http.ResponseWriter, r *http.Request) {
+    // 1. Parse input
+    var body struct { /* ... */ }
+    if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+        jsonError(w, \"campo obrigatório\", http.StatusBadRequest)
+        return
+    }
+
+    // 2. Gerar chave usando helper de schema.go
+    key := cache.KeyMyData(body.SomeID)
+
+    // 3. Tentar cache
+    var cached cache.CachedMyData
+    if hit, err := cache.GetJSON(key, &cached); hit {
+        // HIT! Retornar rápido
+        jsonOK(w, cached)
+        return
+    }
+    // if err != nil: log mas continue, não fatal
+
+    // 4. Buscar source (DB, API, etc)
+    data, err := h.myRepo.FetchData(ctx, body.SomeID)
+    if err != nil {
+        log.Printf(\"[MyEndpoint] erro: %v\", err)
+        jsonError(w, \"falha ao buscar dados\", http.StatusBadGateway)
+        return
+    }
+
+    // 5. Se necessário, formatar para cache (adicionar UpdatedAt, etc)
+    cachePayload := cache.CachedMyData{
+        // ...map data to cache type...
+        UpdatedAt: time.Now().Format(time.RFC3339),
+    }
+
+    // 6. Gravar cache (não-bloqueante, ignore erros)
+    _ = cache.SetJSON(key, cachePayload, cache.TTLMyData)
+
+    // 7. Retornar ao client
+    jsonOK(w, cachePayload)
+}
+```
+
+════════════════════════════════════════════════════════════════════════════════
+💾 PADRÃO: HANDLER DE ESCRITA (Sync)
+════════════════════════════════════════════════════════════════════════════════
+
+```go
+func (h *Handler) MySyncEndpoint(w http.ResponseWriter, r *http.Request) {
+    // 1. Parse input
+    var body struct { /* ... */ }
+    if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+        jsonError(w, \"body inválido\", http.StatusBadRequest)
+        return
+    }
+
+    // 2. Buscar source (SPTrans API, etc)
+    items, err := h.sptrans.FetchItems(body.Term)
+    if err != nil {
+        log.Printf(\"[MySyncEndpoint] erro: %v\", err)
+        jsonError(w, \"falha ao sincronizar\", http.StatusBadGateway)
+        return
+    }
+
+    // 3. Upsert em DB (SÍNCRONO, crítico)
+    err = h.myRepo.UpsertItems(ctx, items)
+    if err != nil {
+        log.Printf(\"[MySyncEndpoint] upsert error: %v\", err)
+        jsonError(w, \"falha ao persistir\", http.StatusInternalServerError)
+        return
+    }
+
+    // 4. Responder ao client IMEDIATAMENTE
+    jsonOK(w, map[string]any{\"count\": len(items), \"synced\": true})
+
+    // 5. BACKGROUND: Popular cache (não-bloqueante)
+    // Use goroutine para evitar latência
+    go func(items []sptrans.MyItem) {
+        for _, item := range items {
+            // Formatar payload com UpdatedAt
+            payload := cache.CachedMyItem{
+                ID:        item.ID,
+                Name:      item.Name,
+                UpdatedAt: time.Now().Format(time.RFC3339),
+            }
+            // Gravar por chave primária
+            key1 := cache.KeyMyItemByID(item.ID)
+            _ = cache.SetJSON(key1, payload, cache.TTLMyData)
+
+            // Se houver chaves secundárias, gravar também
+            key2 := cache.KeyMyItemByCode(item.Code)
+            _ = cache.SetJSON(key2, item.ID, cache.TTLMyData)
+        }
+    }(items)
+}
+```
+
+════════════════════════════════════════════════════════════════════════════════
+✅ CHECKLIST: ANTES DE MERGEAR
+════════════════════════════════════════════════════════════════════════════════
+
+Para cada handler que você adiciona cache:
+
+[ ] Criou tipo CachedXxx em schema.go?
+[ ] Criou funções KeyXxx em schema.go?
+[ ] Importa cache package no handler?
+[ ] Gera chaves com cache.KeyXxx(...)?
+[ ] Cache.GetJSON trata hit/miss corretamente?
+[ ] Cache.SetJSON é background (goroutine) em writes?
+[ ] Adiciona UpdatedAt ao payload do cache?
+[ ] TTL escolhido apropriado (referência: TTL*.go)?
+[ ] Trata erro de cache silenciosamente (ignore)?
+[ ] DB commit é sempre antes de cache (dados primários)?
+[ ] Endpoint funciona sem cache (fallback)?
+[ ] Testes: sem cache, depois com cache hit?
+
+
+════════════════════════════════════════════════════════════════════════════════
+📊 MATRIZ: QUAIS ENDPOINTS CACHEIAM?
+════════════════════════════════════════════════════════════════════════════════
+
+Endpoint              Tipo      Cache?   Chave(s)               TTL
+──────────────────────────────────────────────────────────────────────────────────
+GET /buses/{id}       READ      ❌       -                      -
+POST /geocode         READ      ✅       geocode:addr:*         30d
+POST /reverse         READ      ❌       -                      -
+POST /nearby          READ      ❌       -                      -
+POST /nearby/spatial  READ      ✅       nearby:lines:*         6h
+POST /distance/sort   READ      ❌       -                      -
+POST /sync            WRITE     ✅       lines:id:*             60d
+                                        lines:code:*:dir:*
+POST /sync/stops      WRITE     ✅       stops:line:*           30d
+                                        stops:cp:*
+GET /lines/resolve    READ      ✅       lines:code:*:dir:*     60d
+POST /stops/nearby    READ      ✅       stops:nearby:*         6h
+
+❌ = Sem cache (dados muito voláteis, não-reutilizáveis, ou não-frequentes)
+✅ = Com cache (dados reutilizáveis, consultas pesadas ou pouco mutáveis)
+
+
+════════════════════════════════════════════════════════════════════════════════
+🔧 COMO ADICIONAR CACHE A UM NOVO ENDPOINT
+════════════════════════════════════════════════════════════════════════════════
+
+Passo 1: Definir o tipo CachedXxx
+  - Vá a schema.go
+  - Adicione struct CachedXxx com campos JSON
+  - Documente com comentário: Fonte, TTL, exemplo JSON
+
+Passo 2: Definir funções KeyXxx
+  - Adicione func KeyXxxByID(...) string em schema.go
+  - Adicione func KeyXxxByCode(...) string (se aplicável)
+  - Use strings.TrimSpace(), strings.ToUpper() para normalizar
+  - Inclua comment: Format: \"key:pattern\"
+
+Passo 3: Usar no handler
+  - Import cache
+  - Calcule key = cache.KeyXxx(...)
+  - Cache.GetJSON(key, &cached) antes de buscar source
+  - Se miss: buscar source + formatar + Cache.SetJSON(key, payload, TTL)
+
+Passo 4: Testar
+  - Teste sem cache: clear store, requisição deve ir ao DB
+  - Teste com cache: repetir requisição, deve vir do cache
+  - Teste TTL: esperar TTL passar, cache deve expirar
+
+
+════════════════════════════════════════════════════════════════════════════════
+💡 EXEMPLOS DE CHAVES REAIS
+════════════════════════════════════════════════════════════════════════════════
+
+Tipo               Exemplo de Chave                    TTL
+─────────────────────────────────────────────────────────────────────────────
+Linha por ID       lines:id:33624                      60 dias
+Linha por code     lines:code:8000-10:dir:0            60 dias
+Parada por CP      stops:cp:1023                       30 dias
+Paradas de linha   stops:line:1                        30 dias
+Geocode            geocode:addr:7f123abc456def        30 dias
+Linhas próximas    nearby:lines:-23.5614:-46.6558:1.00  6 horas
+Paradas próximas   stops:nearby:-2356:-4665:100        6 horas
+
+
+════════════════════════════════════════════════════════════════════════════════
+🚨 ERROS COMUNS
+════════════════════════════════════════════════════════════════════════════════
+
+❌ Não usar funções KeyXxx, escrever string diretamente
+   → Risco: inconsistência de chaves entre escrita e leitura
+   ✅ Sempre: cache.KeyXxx(...)
+
+❌ Não adicionar UpdatedAt ao payload
+   → Risco: não saber quando dado foi cacheado
+   ✅ Sempre: UpdatedAt: time.Now().Format(time.RFC3339)
+
+❌ Fazer cache sync (cache.SetJSON dentro de handler)
+   → Risco: latência extra na resposta HTTP
+   ✅ Sempre: go func() { cache.SetJSON(...) }(...)
+
+❌ Ignorar erro de DB mas tratar erro de cache
+   → Risco: comportamento inconsistente
+   ✅ Sempre: cache erros são silenciosos, DB erros são fatais
+
+❌ Usar cache para dados mutáveis (muitos updates)
+   → Risco: desincronização com DB
+   ✅ Apenas: dados quasi-imutáveis (linhas, paradas, endereços)
+
+❌ TTL muito curto (<1h) para dados baratos
+   → Risco: cache inútil, overhead
+   ✅ TTLs mínimos: 1h para queries pesadas, 30d+ para dados imutáveis
+
+════════════════════════════════════════════════════════════════════════════════

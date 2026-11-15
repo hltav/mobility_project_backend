@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Proxy para o microserviço Go (mobility-processor).
- * Substitui chamadas diretas ao ExternalApiService, GeocodingService e HaversineService.
+ * Mantém o Laravel como camada de API e delega processamento ao Go.
  */
 class ProcessorService
 {
@@ -18,13 +18,11 @@ class ProcessorService
         $this->baseUrl = rtrim(config('services.processor.url', 'http://localhost:8080'), '/');
     }
 
-    /**
-     * Posições dos ônibus em tempo real — equivale a ExternalApiService::getBusPositionsByLine
-     */
     public function getBusPositions(int $sptransId): array
     {
         try {
             $response = Http::timeout(5)->get("{$this->baseUrl}/buses/{$sptransId}");
+            $this->logFailedResponse('getBusPositions', $response, ['sptrans_id' => $sptransId]);
             return $response->json('buses', []);
         } catch (\Throwable $e) {
             Log::error('[Processor] getBusPositions falhou', ['error' => $e->getMessage()]);
@@ -32,11 +30,7 @@ class ProcessorService
         }
     }
 
-    /**
-     * Geocodificação — equivale a GeocodingService::geocode
-     *
-     * @return array{lat: float, lng: float}|null
-     */
+    /** @return array{lat: float, lng: float}|null */
     public function geocode(string $address): ?array
     {
         try {
@@ -44,6 +38,7 @@ class ProcessorService
                 'address' => $address,
             ]);
 
+            $this->logFailedResponse('geocode', $response, ['address' => $address]);
             return $response->json('coords');
         } catch (\Throwable $e) {
             Log::error('[Processor] geocode falhou', ['error' => $e->getMessage()]);
@@ -51,9 +46,6 @@ class ProcessorService
         }
     }
 
-    /**
-     * Reverse geocoding — equivale a GeocodingService::reverse
-     */
     public function reverse(float $lat, float $lng): ?string
     {
         try {
@@ -62,6 +54,7 @@ class ProcessorService
                 'lng' => $lng,
             ]);
 
+            $this->logFailedResponse('reverse', $response, ['lat' => $lat, 'lng' => $lng]);
             return $response->json('address');
         } catch (\Throwable $e) {
             Log::error('[Processor] reverse falhou', ['error' => $e->getMessage()]);
@@ -69,9 +62,6 @@ class ProcessorService
         }
     }
 
-    /**
-     * Linhas próximas — equivale a GeocodingService::geocode + HaversineService::filterByRadius
-     */
     public function findNearby(string $address, array $lines, float $radiusKm = 1.0): array
     {
         try {
@@ -81,6 +71,7 @@ class ProcessorService
                 'lines'     => $lines,
             ]);
 
+            $this->logFailedResponse('findNearby', $response, ['address' => $address, 'radius_km' => $radiusKm]);
             return $response->json() ?? ['origin' => null, 'lines' => []];
         } catch (\Throwable $e) {
             Log::error('[Processor] findNearby falhou', ['error' => $e->getMessage()]);
@@ -88,13 +79,7 @@ class ProcessorService
         }
     }
 
-    /**
-     * Sincroniza linhas com a SPTrans em paralelo via Go.
-     * Retorna os dados brutos para o Laravel persistir.
-     *
-     * @param  string[] $terms
-     * @return array[]
-     */
+    /** @param string[] $terms */
     public function syncLines(array $terms): array
     {
         try {
@@ -102,6 +87,7 @@ class ProcessorService
                 'terms' => $terms,
             ]);
 
+            $this->logFailedResponse('syncLines', $response, ['terms' => $terms]);
             return $response->json('lines', []);
         } catch (\Throwable $e) {
             Log::error('[Processor] syncLines falhou', ['error' => $e->getMessage()]);
@@ -110,7 +96,7 @@ class ProcessorService
     }
 
     /**
-     * Ordena e filtra pontos por distância — substitui a lógica local do HaversineService.
+     * Ordena e filtra pontos por distância no processor.
      */
     public function sortByDistance(float $lat, float $lng, array $points, float $radiusKm = 2.0): array
     {
@@ -122,6 +108,7 @@ class ProcessorService
                 'points'    => $points,
             ]);
 
+            $this->logFailedResponse('sortByDistance', $response, ['lat' => $lat, 'lng' => $lng, 'radius_km' => $radiusKm]);
             return $response->json('points', []);
         } catch (\Throwable $e) {
             Log::error('[Processor] sortByDistance falhou', ['error' => $e->getMessage()]);
@@ -141,6 +128,7 @@ class ProcessorService
                 'radius_km' => $radiusKm,
             ]);
 
+            $this->logFailedResponse('findNearbyInGo', $response, ['address' => $address, 'radius_km' => $radiusKm]);
             return $response->json() ?? ['origin' => null, 'lines' => []];
         } catch (\Throwable $e) {
             Log::error('[Processor] findNearbyInGo falhou', ['error' => $e->getMessage()]);
@@ -156,9 +144,10 @@ class ProcessorService
     {
         try {
             // O endpoint /sync/stops no Go deve realizar o upsert das paradas e relações.
-            Http::timeout(30)->post("{$this->baseUrl}/sync/stops", [
+            $response = Http::timeout(30)->post("{$this->baseUrl}/sync/stops", [
                 'sptrans_line_id' => $sptransLineId,
             ]);
+            $this->logFailedResponse('syncStopsForLine', $response, ['sptrans_line_id' => $sptransLineId]);
         } catch (\Throwable $e) {
             Log::error('[Processor] syncStopsForLine falhou', ['error' => $e->getMessage()]);
         }
@@ -175,6 +164,7 @@ class ProcessorService
                 'direction' => $direction,
             ]);
 
+            $this->logFailedResponse('resolveLineId', $response, ['code' => $lineCode, 'direction' => $direction]);
             return (int) $response->json('sptrans_id', 0);
         } catch (\Throwable $e) {
             Log::error('[Processor] resolveLineId falhou', ['error' => $e->getMessage()]);
@@ -188,11 +178,37 @@ class ProcessorService
     public function getNearestStops(float $lat, float $lng, float $radiusKm, int $limit, bool $onlyWithLines): array
     {
         try {
-            $response = Http::timeout(10)->post("{$this->baseUrl}/stops/nearby", compact('lat', 'lng', 'radiusKm', 'limit', 'onlyWithLines'));
+            $response = Http::timeout(10)->post("{$this->baseUrl}/stops/nearby", [
+                'lat' => $lat,
+                'lng' => $lng,
+                'radius_km' => $radiusKm,
+                'limit' => $limit,
+                'only_with_lines' => $onlyWithLines,
+            ]);
+            $this->logFailedResponse('getNearestStops', $response, [
+                'lat' => $lat,
+                'lng' => $lng,
+                'radius_km' => $radiusKm,
+                'limit' => $limit,
+                'only_with_lines' => $onlyWithLines,
+            ]);
             return $response->json('stops', []);
         } catch (\Throwable $e) {
             Log::error('[Processor] getNearestStops falhou', ['error' => $e->getMessage()]);
             return [];
         }
+    }
+
+    private function logFailedResponse(string $operation, \Illuminate\Http\Client\Response $response, array $context = []): void
+    {
+        if (!$response->failed()) {
+            return;
+        }
+
+        Log::error("[Processor] {$operation} retornou HTTP inválido", $context + [
+            'status' => $response->status(),
+            'body' => $response->body(),
+            'base_url' => $this->baseUrl,
+        ]);
     }
 }

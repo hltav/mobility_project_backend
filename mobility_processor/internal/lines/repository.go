@@ -3,16 +3,12 @@ package lines
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
-	"net/url"
-	"os"
-	"strconv"
-	"strings"
-	"time"
-
-	_ "github.com/go-sql-driver/mysql"
-
+	"math"
+	"mobility_processor/internal/database"
 	"mobility_processor/internal/sptrans"
+	"strings"
 )
 
 type Line struct {
@@ -27,178 +23,134 @@ type Line struct {
 	OriginLng   sql.NullFloat64
 }
 
-type Repository struct {
-	db *sql.DB
+type NearbyLine struct {
+	ID          int     `json:"id"`
+	Code        string  `json:"code"`
+	Name        string  `json:"name"`
+	Origin      string  `json:"origin"`
+	Destination string  `json:"destination"`
+	Circular    bool    `json:"circular"`
+	SptransID   int     `json:"sptrans_id"`
+	OriginLat   float64 `json:"origin_lat"`
+	OriginLng   float64 `json:"origin_lng"`
+	DistanceKm  float64 `json:"distance_km"`
 }
 
-func OpenFromEnv() (*Repository, error) {
-	connection := env("DB_CONNECTION", "mysql")
-	if connection != "mysql" {
-		return nil, fmt.Errorf("DB_CONNECTION=%q não suportado pelo processor Go; use mysql", connection)
-	}
+type Repository struct{ db *sql.DB }
 
-	dsn := os.Getenv("DB_DSN")
-	if dsn == "" {
-		host := env("DB_HOST", "127.0.0.1")
-		port := env("DB_PORT", "3306")
-		database := os.Getenv("DB_DATABASE")
-		username := os.Getenv("DB_USERNAME")
-		password := os.Getenv("DB_PASSWORD")
-		if database == "" || username == "" {
-			return nil, fmt.Errorf("defina DB_DATABASE e DB_USERNAME ou informe DB_DSN")
-		}
+func NewRepository(db *sql.DB) *Repository { return &Repository{db: db} }
 
-		params := url.Values{}
-		params.Set("charset", "utf8mb4")
-		params.Set("collation", "utf8mb4_unicode_ci")
-		params.Set("parseTime", "true")
-		params.Set("loc", "Local")
-
-		dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?%s", username, password, host, port, database, params.Encode())
-	}
-
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		return nil, fmt.Errorf("abrir conexão MySQL: %w", err)
-	}
-	db.SetMaxOpenConns(10)
-	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(30 * time.Minute)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := db.PingContext(ctx); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("conectar no MySQL: %w", err)
-	}
-
-	return &Repository{db: db}, nil
-}
-
-func (r *Repository) Close() error {
-	return r.db.Close()
-}
+var ErrAmbiguousLine = errors.New("line code has multiple SPTrans identities; specify SL")
 
 func (r *Repository) UpsertFromSPTrans(ctx context.Context, raw sptrans.RawLine) error {
+	if raw.CL <= 0 || strings.TrimSpace(raw.LT) == "" || raw.TL < 0 || (raw.SL != 1 && raw.SL != 2) {
+		return errors.New("invalid SPTrans CL/LT/TL/SL")
+	}
 	line := FromSPTrans(raw)
-	if line.SptransID == 0 {
-		return nil
-	}
-
-	_, err := r.db.ExecContext(ctx,
-		"INSERT INTO `lines` "+
-			"(code, name, origin, destination, circular, sptrans_id, created_at, updated_at) "+
-			"VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW()) "+
-			"ON DUPLICATE KEY UPDATE "+
-			"code = VALUES(code), "+
-			"name = VALUES(name), "+
-			"origin = VALUES(origin), "+
-			"destination = VALUES(destination), "+
-			"circular = VALUES(circular), "+
-			"updated_at = NOW()",
-		line.Code, line.Name, line.Origin, line.Destination, line.Circular, line.SptransID)
-	if err != nil {
-		return fmt.Errorf("upsert linha sptrans_id=%d: %w", line.SptransID, err)
-	}
-	return nil
+	_, err := r.db.ExecContext(ctx, `INSERT INTO public.lines
+ (provider,sptrans_line_id,code_prefix,code_suffix,display_code,display_name,sptrans_direction,is_circular,headsign_primary_to_secondary,headsign_secondary_to_primary,created_at,updated_at)
+ VALUES ('sptrans',$1,$2,$3,$4,$5,$6,$7,$8,$9,now(),now())
+ ON CONFLICT(provider,sptrans_line_id) WHERE sptrans_line_id IS NOT NULL DO UPDATE SET
+ code_prefix=EXCLUDED.code_prefix,code_suffix=EXCLUDED.code_suffix,display_code=EXCLUDED.display_code,display_name=EXCLUDED.display_name,
+ sptrans_direction=EXCLUDED.sptrans_direction,is_circular=EXCLUDED.is_circular,headsign_primary_to_secondary=EXCLUDED.headsign_primary_to_secondary,
+ headsign_secondary_to_primary=EXCLUDED.headsign_secondary_to_primary,updated_at=now()`, raw.CL, raw.LT, raw.TL, line.Code, line.Name, raw.SL, raw.LC, raw.TP, raw.TS)
+	return err
 }
 
-func (r *Repository) LinesForGeocoding(ctx context.Context, fresh bool, limit int) ([]Line, error) {
-	query := "SELECT id, code, name, origin, destination, circular, sptrans_id, origin_lat, origin_lng " +
-		"FROM `lines` " +
-		"WHERE origin <> ''"
-	if !fresh {
-		query += " AND (origin_lat IS NULL OR origin_lng IS NULL)"
-	}
-	query += " ORDER BY id"
-	if limit > 0 {
-		query += " LIMIT " + strconv.Itoa(limit)
-	}
+const projection = `id,display_code,display_name,coalesce(headsign_primary_to_secondary,''),coalesce(headsign_secondary_to_primary,''),coalesce(is_circular,false),sptrans_line_id,origin_lat,origin_lng`
 
-	rows, err := r.db.QueryContext(ctx, query)
+func scanLine(row interface{ Scan(...any) error }, l *Line) error {
+	return row.Scan(&l.ID, &l.Code, &l.Name, &l.Origin, &l.Destination, &l.Circular, &l.SptransID, &l.OriginLat, &l.OriginLng)
+}
+func (r *Repository) LinesForGeocoding(ctx context.Context, fresh bool, limit int) ([]Line, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT `+projection+` FROM public.lines WHERE sptrans_line_id IS NOT NULL AND coalesce(headsign_primary_to_secondary,'')<>'' AND ($1 OR origin_lat IS NULL OR origin_lng IS NULL) ORDER BY id LIMIT NULLIF($2,0)`, fresh, max(limit, 0))
 	if err != nil {
-		return nil, fmt.Errorf("buscar linhas para geocoding: %w", err)
+		return nil, err
 	}
 	defer rows.Close()
-
-	var result []Line
+	result := []Line{}
 	for rows.Next() {
-		var line Line
-		if err := rows.Scan(
-			&line.ID,
-			&line.Code,
-			&line.Name,
-			&line.Origin,
-			&line.Destination,
-			&line.Circular,
-			&line.SptransID,
-			&line.OriginLat,
-			&line.OriginLng,
-		); err != nil {
-			return nil, fmt.Errorf("ler linha: %w", err)
+		var l Line
+		if err := scanLine(rows, &l); err != nil {
+			return nil, err
 		}
-		result = append(result, line)
+		result = append(result, l)
+	}
+	return result, rows.Err()
+}
+func (r *Repository) UpdateOriginCoordinates(ctx context.Context, id int, lat, lng float64) error {
+	if !database.ValidCoordinates(lat, lng) {
+		return errors.New("invalid coordinates")
+	}
+	_, err := r.db.ExecContext(ctx, `UPDATE public.lines SET origin_lat=$1,origin_lng=$2,updated_at=now() WHERE id=$3`, lat, lng, id)
+	return err
+}
+func (r *Repository) UpdateOriginCoordinatesByOrigin(ctx context.Context, origin string, lat, lng float64) (int64, error) {
+	if !database.ValidCoordinates(lat, lng) {
+		return 0, errors.New("invalid coordinates")
+	}
+	res, err := r.db.ExecContext(ctx, `UPDATE public.lines SET origin_lat=$1,origin_lng=$2,updated_at=now() WHERE headsign_primary_to_secondary=$3 AND (origin_lat IS NULL OR origin_lng IS NULL)`, lat, lng, origin)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+func (r *Repository) Nearby(ctx context.Context, lat, lng, radiusKm float64) ([]NearbyLine, error) {
+	if !database.ValidCoordinates(lat, lng) || !database.ValidRadius(radiusKm) {
+		return nil, errors.New("invalid spatial query")
+	}
+	rows, err := r.db.QueryContext(ctx, `SELECT `+projection+`,ST_Distance(ST_SetSRID(ST_MakePoint(origin_lng::float8,origin_lat::float8),4326)::geography,ST_SetSRID(ST_MakePoint($2,$1),4326)::geography)/1000
+ FROM public.lines WHERE sptrans_line_id IS NOT NULL AND origin_lat IS NOT NULL AND origin_lng IS NOT NULL
+ AND ST_DWithin(ST_SetSRID(ST_MakePoint(origin_lng::float8,origin_lat::float8),4326)::geography,ST_SetSRID(ST_MakePoint($2,$1),4326)::geography,$3)
+ ORDER BY 10,id`, lat, lng, radiusKm*1000)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []NearbyLine{}
+	for rows.Next() {
+		var l NearbyLine
+		if err := rows.Scan(&l.ID, &l.Code, &l.Name, &l.Origin, &l.Destination, &l.Circular, &l.SptransID, &l.OriginLat, &l.OriginLng, &l.DistanceKm); err != nil {
+			return nil, err
+		}
+		l.DistanceKm = math.Round(l.DistanceKm*1000) / 1000
+		out = append(out, l)
+	}
+	return out, rows.Err()
+}
+func (r *Repository) ResolveSptransID(ctx context.Context, code string, direction int) (int, error) {
+	if direction < 0 || direction > 2 {
+		return 0, errors.New("SPTrans direction must be 1 or 2; 0 means unspecified")
+	}
+	rows, err := r.db.QueryContext(ctx, `SELECT sptrans_line_id FROM public.lines WHERE provider='sptrans' AND display_code=$1 AND sptrans_line_id IS NOT NULL AND ($2=0 OR sptrans_direction=$2) ORDER BY id LIMIT 2`, code, direction)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	ids := []int{}
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			return 0, err
+		}
+		ids = append(ids, id)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterar linhas: %w", err)
+		return 0, err
 	}
-	return result, nil
+	if len(ids) > 1 {
+		return 0, ErrAmbiguousLine
+	}
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	return ids[0], nil
 }
-
-func (r *Repository) UpdateOriginCoordinates(ctx context.Context, id int, lat, lng float64) error {
-	_, err := r.db.ExecContext(ctx,
-		"UPDATE `lines` "+
-			"SET origin_lat = ?, origin_lng = ?, updated_at = NOW() "+
-			"WHERE id = ?",
-		lat, lng, id)
-	if err != nil {
-		return fmt.Errorf("atualizar coordenadas da linha id=%d: %w", id, err)
-	}
-	return nil
-}
-
-func (r *Repository) UpdateOriginCoordinatesByOrigin(ctx context.Context, origin string, lat, lng float64) (int64, error) {
-	result, err := r.db.ExecContext(ctx,
-		"UPDATE `lines` "+
-			"SET origin_lat = ?, origin_lng = ?, updated_at = NOW() "+
-			"WHERE origin = ? AND (origin_lat IS NULL OR origin_lng IS NULL)",
-		lat, lng, origin)
-	if err != nil {
-		return 0, fmt.Errorf("atualizar coordenadas da origem %q: %w", origin, err)
-	}
-
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return 0, fmt.Errorf("contar linhas atualizadas da origem %q: %w", origin, err)
-	}
-	return rows, nil
-}
-
 func (r *Repository) Count(ctx context.Context) (int, error) {
-	var count int
-	if err := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM `lines`").Scan(&count); err != nil {
-		return 0, fmt.Errorf("contar linhas: %w", err)
-	}
-	return count, nil
+	var n int
+	err := r.db.QueryRowContext(ctx, `SELECT count(*) FROM public.lines`).Scan(&n)
+	return n, err
 }
-
 func FromSPTrans(raw sptrans.RawLine) Line {
-	origin := strings.TrimSpace(raw.TP)
-	destination := strings.TrimSpace(raw.TS)
-	name := strings.TrimSpace(origin + " - " + destination)
-	return Line{
-		Code:        strings.TrimSpace(raw.LT),
-		Name:        name,
-		Origin:      origin,
-		Destination: destination,
-		Circular:    raw.LC,
-		SptransID:   raw.CL,
-	}
-}
-
-func env(key, fallback string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return fallback
+	return Line{Code: fmt.Sprintf("%s-%d", strings.TrimSpace(raw.LT), raw.TL), Name: strings.TrimSpace(raw.TP + " - " + raw.TS), Origin: raw.TP, Destination: raw.TS, Circular: raw.LC, SptransID: raw.CL}
 }
