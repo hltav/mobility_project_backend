@@ -7,7 +7,28 @@ import (
 	"strings"
 )
 
+type Terminal struct {
+	Name        string        `json:"name"`
+	Position    ShapeEndpoint `json:"position"`
+	HasPosition bool          `json:"has_position"`
+}
+
+type PatternStop struct {
+	Sequence int           `json:"sequence"`
+	Position ShapeEndpoint `json:"position"`
+}
+
+type OperationalStop struct {
+	Position ShapeEndpoint `json:"position"`
+	// Nil means an unordered association, never an inferred official sequence.
+	Sequence *int `json:"sequence"`
+}
+
 type Candidate struct {
+	AgencyID int64
+	Provider string
+	Stops    []PatternStop
+
 	FeedVersionID int64
 	PatternID     int64
 	DirectionID   sql.NullInt64
@@ -17,14 +38,28 @@ type Candidate struct {
 	LongName      string
 	ShapeStart    ShapeEndpoint
 	ShapeEnd      ShapeEndpoint
+	HeadSign      string
+	StartStop     Terminal
+	EndStop       Terminal
 }
 
 type LineToMatch struct {
-	LineID    int64
-	Code      string
-	Origin    string
-	OriginLat sql.NullFloat64
-	OriginLng sql.NullFloat64
+	Provider              string
+	SelectedFeedVersionID int64
+	Circular              bool
+	Stops                 []OperationalStop
+
+	LineID         int64
+	SptransLineID  int64
+	Direction      sql.NullInt64
+	HeadSign       string
+	StartTerminal  Terminal
+	EndTerminal    Terminal
+	Code           string
+	Origin         string
+	SecondaryLabel string
+	OriginLat      sql.NullFloat64
+	OriginLng      sql.NullFloat64
 }
 
 type Match struct {
@@ -36,15 +71,9 @@ type Match struct {
 	MatchingMethod string
 }
 
-const (
-	exactScoreThreshold  = 0.95
-	textSimWeight        = 0.6
-	spatialWeight        = 0.4
-	spatialMaxDistanceKm = 0.5
-	confirmThreshold     = 0.7
-)
+const spatialMaxDistanceKm = 0.5
 
-// Matcher executa o pipeline: exato -> texto -> espacial, combinando scores.
+// Matcher separates full-code identity selection from oriented pattern evidence.
 type Matcher struct {
 	repo *Repository
 }
@@ -64,14 +93,13 @@ func (m *Matcher) RunAll(ctx context.Context) (int, error) {
 	}
 
 	var matches []Match
-	for _, line := range lines {
-		for _, candidate := range candidates {
-			best, method, score := m.bestMatch(line, []Candidate{candidate})
-			if best == nil {
-				continue
-			}
-			matches = append(matches, Match{FeedVersionID: best.FeedVersionID, PatternID: best.PatternID, RouteID: best.RouteID, LineID: line.LineID, Confidence: score, MatchingMethod: method})
+	for _, assessment := range m.AssessBatch(lines, candidates) {
+		if assessment.EvidenceStatus == "contradicted" {
+			continue
 		}
+		matches = append(matches, Match{FeedVersionID: assessment.FeedVersionID, PatternID: assessment.PatternID,
+			RouteID: assessment.RouteID, LineID: assessment.LineID, Confidence: assessment.Confidence,
+			MatchingMethod: assessment.MatchingMethod})
 	}
 
 	if err := m.repo.SaveMatches(ctx, matches); err != nil {
@@ -95,27 +123,17 @@ func (m *Matcher) bestMatch(line LineToMatch, candidates []Candidate) (*Candidat
 			return c, "exact_code", 1.0
 		}
 
-		// 2. Similaridade de texto (long_name vs origin)
-		textScore := textSimilarity(c.LongName, line.Origin)
+		// Similarity is an explicit identity fallback, never orientation evidence.
+		combined := textSimilarity(c.LongName, strings.TrimSpace(line.Origin+" "+line.SecondaryLabel))
 
-		// 3. Score espacial, se a linha já tem coordenadas de origem
-		spatial := 0.0
-		if line.OriginLat.Valid && line.OriginLng.Valid && c.HasGeometry {
-			spatial = spatialScore(
-				ShapeEndpoint{Lat: line.OriginLat.Float64, Lng: line.OriginLng.Float64},
-				c.ShapeStart, c.ShapeEnd, spatialMaxDistanceKm,
-			)
-		}
-
-		combined := textScore*textSimWeight + spatial*spatialWeight
 		if combined > bestScore {
 			bestScore = combined
 			best = c
-			bestMethod = "text_spatial"
+			bestMethod = "fallback_text"
 		}
 	}
 
-	if best == nil || bestScore < 0.3 {
+	if best == nil || bestScore < 0.6 {
 		return nil, "", 0
 	}
 	return best, bestMethod, bestScore
@@ -129,3 +147,26 @@ func normalizeCode(code string) string {
 
 // MatchStatus deliberately never promotes an algorithmic suggestion to confirmed.
 func MatchStatus(confidence float64) string { return "pending" }
+
+// Candidate selection is global for this operational identity, before scoring
+// individual patterns. Exact full codes suppress all fuzzy alternatives.
+func (m *Matcher) selectCandidates(line LineToMatch, candidates []Candidate) ([]Candidate, bool) {
+	eligible := []Candidate{}
+	exact := []Candidate{}
+	for _, c := range candidates {
+		if line.SelectedFeedVersionID > 0 && c.FeedVersionID != line.SelectedFeedVersionID {
+			continue
+		}
+		if line.Provider != "" && c.Provider != "" && line.Provider != c.Provider {
+			continue
+		}
+		eligible = append(eligible, c)
+		if normalizeCode(line.Code) != "" && normalizeCode(line.Code) == normalizeCode(c.ShortName) {
+			exact = append(exact, c)
+		}
+	}
+	if len(exact) > 0 {
+		return exact, false
+	}
+	return eligible, true
+}

@@ -1,0 +1,48 @@
+{
+  "database": "open_transit",
+  "read_at": "2026-11-20T04:41:58.030792+00:00",
+  "feed_version_id": 1,
+  "codes": 30,
+  "operational_lines": 60,
+  "successful_dry_runs": 60,
+  "assessment_counts": {
+    "insufficient": 98
+  },
+  "line_classifications": {
+    "insuficiente": 60
+  },
+  "without_candidate": [
+    {
+      "cl": 2689,
+      "id": 39,
+      "code": "1027-10",
+      "headsign": "",
+      "is_circular": true,
+      "sptrans_direction": 1
+    },
+    {
+      "cl": 35457,
+      "id": 40,
+      "code": "1027-10",
+      "headsign": "",
+      "is_circular": true,
+      "sptrans_direction": 2
+    }
+  ],
+  "missing_evidence_counts": {
+    "operational_agency_identity": 98,
+    "oriented_operational_headsign": 98,
+    "operational_origin_coordinates": 98,
+    "operational_destination_coordinates": 98,
+    "operational_stops": 98,
+    "official_operational_stop_sequence": 98
+  },
+  "available_evidence_counts": {
+    "exact_code": 98,
+    "valid_gtfs_shape": 98
+  },
+  "assessment_statuses": {
+    "pending": 98
+  },
+  "distinct_patterns": 49
+}

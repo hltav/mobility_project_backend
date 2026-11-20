@@ -151,6 +151,25 @@ func (r *Repository) Count(ctx context.Context) (int, error) {
 	err := r.db.QueryRowContext(ctx, `SELECT count(*) FROM public.lines`).Scan(&n)
 	return n, err
 }
+
+// ResolvePredictionDirection reads canonical SPTrans identity, never GTFS or
+// public-code arithmetic. Missing, invalid or conflicting records fail closed.
+func (r *Repository) ResolvePredictionDirection(ctx context.Context, cl int) (int, error) {
+	if cl <= 0 {
+		return 0, errors.New("invalid SPTrans CL")
+	}
+	var direction sql.NullInt64
+	var count int
+	err := r.db.QueryRowContext(ctx, `SELECT count(*), min(sptrans_direction)
+ FROM public.lines WHERE provider='sptrans' AND sptrans_line_id=$1`, cl).Scan(&count, &direction)
+	if err != nil {
+		return 0, err
+	}
+	if count != 1 || !direction.Valid || (direction.Int64 != 1 && direction.Int64 != 2) {
+		return 0, errors.New("SPTrans direction unavailable or ambiguous")
+	}
+	return int(direction.Int64), nil
+}
 func FromSPTrans(raw sptrans.RawLine) Line {
 	return Line{Code: fmt.Sprintf("%s-%d", strings.TrimSpace(raw.LT), raw.TL), Name: strings.TrimSpace(raw.TP + " - " + raw.TS), Origin: raw.TP, Destination: raw.TS, Circular: raw.LC, SptransID: raw.CL}
 }

@@ -1,9 +1,11 @@
 package sptrans
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"net/url"
 	"sync"
 	"time"
@@ -39,14 +41,31 @@ func (c *Client) SearchStops(term string) ([]Stop, error) {
 
 // GetStopsByLine busca as paradas de uma linha específica.
 func (c *Client) GetStopsByLine(lineID int) ([]Stop, error) {
+	return c.GetStopsByLineContext(context.Background(), lineID)
+}
+
+func (c *Client) GetStopsByLineContext(ctx context.Context, lineID int) ([]Stop, error) {
+	if lineID <= 0 {
+		return nil, ErrInvalidLine
+	}
 	q := url.Values{"codigoLinha": {fmt.Sprintf("%d", lineID)}}
-	body, err := c.get("/Parada/BuscarParadasPorLinha", q)
+	if err := c.authenticateContext(ctx, false); err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/Parada/BuscarParadasPorLinha?"+q.Encode(), nil)
+	if err != nil {
+		return nil, apiFailure(ErrTransport, 0, nil)
+	}
+	body, err := c.responseBody(ctx, req, ErrTransport)
 	if err != nil {
 		return nil, err
 	}
 	var stops []Stop
 	if err := json.Unmarshal(body, &stops); err != nil {
 		return nil, fmt.Errorf("decode paradas da linha %d: %w", lineID, err)
+	}
+	if stops == nil {
+		return nil, apiFailure(ErrIncompleteResponse, 0, nil)
 	}
 	return stops, nil
 }

@@ -10,7 +10,7 @@ COPY . .
 RUN go build -o /usr/local/bin/processor ./cmd/server
 
 FROM alpine:3.19 AS server-runtime
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app/cmd/server
 COPY --from=builder /usr/local/bin/processor /usr/local/bin/processor
 EXPOSE 8080

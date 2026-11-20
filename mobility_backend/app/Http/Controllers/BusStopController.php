@@ -33,13 +33,13 @@ class BusStopController extends Controller
             return response()->json([
                 'message' => 'Pontos próximos recuperados com sucesso.',
                 'data' => $result,
-            ]);
+            ])->header('Cache-Control', 'no-store');
         }
 
         if (!isset($validated['lat'], $validated['lng'])) {
             return response()->json([
                 'message' => 'Informe address ou lat/lng.',
-            ], 422);
+            ], 422)->header('Cache-Control', 'no-store');
         }
 
         $stops = $this->busStopService->nearestFromCoordinates(
@@ -59,7 +59,7 @@ class BusStopController extends Controller
                 ],
                 'stops' => $stops,
             ],
-        ]);
+        ])->header('Cache-Control', 'no-store');
     }
 
     public function tripNearest(Request $request): JsonResponse
@@ -100,7 +100,7 @@ class BusStopController extends Controller
                     $onlyWithLines,
                 ),
             ],
-        ]);
+        ])->header('Cache-Control', 'no-store');
     }
 
     private function resolveNearest(

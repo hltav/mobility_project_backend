@@ -1,0 +1,65 @@
+# Use together with docker-compose.infra.yml. Does not start backend/Processor/MySQL/Valkey.
+services:
+  processor-tools:
+    profiles: ["postgresql"]
+    build:
+      context: ./mobility_processor
+      target: processor-tools
+    image: mobility-processor-tools:stage2
+    read_only: true
+    tmpfs:
+      - /tmp:exec,size=1g
+    working_dir: /workspace
+    volumes:
+      - ./mobility_processor:/workspace:ro
+    environment:
+      DB_CONNECTION: pgsql
+      PGSQL_HOST: postgres
+      PGSQL_DATABASE: "${PGSQL_DATABASE_1}"
+      PGSQL_USERNAME: "${PGSQL_USERNAME_1}"
+      PROCESSOR_POSTGRES_TESTS: "1"
+      GOCACHE: /tmp/go-build
+      GOTMPDIR: /tmp
+      CGO_ENABLED: "0"
+      GOFLAGS: "-mod=readonly"
+    entrypoint: ["/bin/sh", "/workspace/docker/postgresql-tools.sh"]
+    command: ["go", "test", "./..."]
+    networks:
+      - postgresql
+
+  postgres-tools:
+    profiles: ["postgresql"]
+    build:
+      context: ./mobility_backend
+      target: postgres-tools
+    image: mobility-postgres-tools:stage1
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    read_only: true
+    tmpfs:
+      - /tmp
+    working_dir: /workspace
+    volumes:
+      - ./mobility_backend:/workspace:ro
+    environment:
+      APP_ENV: testing
+      APP_DEBUG: "false"
+      # Public, isolated-test-only key; never use for deployed auth.
+      APP_KEY: "base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      APP_CONFIG_CACHE: /tmp/config.php
+      APP_SERVICES_CACHE: /tmp/services.php
+      APP_PACKAGES_CACHE: /tmp/packages.php
+      VIEW_COMPILED_PATH: /tmp/views
+      LOG_CHANNEL: stderr
+      DB_CONNECTION: pgsql
+      PGSQL_HOST: postgres
+      PGSQL_DATABASE: "${PGSQL_DATABASE_2}"
+      PGSQL_USERNAME: "${PGSQL_USERNAME_2}"
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      BCRYPT_ROUNDS: "4"
+      POSTGRES_STAGE1_TESTS: "1"
+    entrypoint: ["/bin/sh", "/workspace/docker/postgresql-tools.sh"]
+    command: ["php", "artisan", "list", "--raw"]
+    networks:
+      - postgresql
