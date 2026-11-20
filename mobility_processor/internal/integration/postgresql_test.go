@@ -339,7 +339,9 @@ func TestConcurrentFixtureReimportAndStopUpsert(t *testing.T) {
 func TestMatchingUsesFeedPatternsAndOnlyPendingSuggestions(t *testing.T) {
 	db := open(t)
 	ctx := context.Background()
-	result, e := gtfs.NewImporter(db).Run(ctx, fixture(t), options(t))
+	opt := options(t)
+	opt.Provider = "sptrans" // This fixture must share the operational provider under test.
+	result, e := gtfs.NewImporter(db).Run(ctx, fixture(t), opt)
 	if e != nil {
 		t.Fatal(e)
 	}

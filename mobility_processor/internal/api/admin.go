@@ -383,7 +383,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"mobility_processor/internal/geocoding"
@@ -479,163 +478,14 @@ func (h *Handler) AdminSyncLine(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// POST /admin/sync/stops
+// POST /admin/sync/stops: explicit, authorized and bounded collection.
 func (h *Handler) AdminSyncStops(w http.ResponseWriter, r *http.Request) {
-
-	var body struct {
-		SptransLineID int `json:"sptrans_line_id"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		jsonError(w, "body inválido", http.StatusBadRequest)
-		return
-	}
-
-	if body.SptransLineID <= 0 {
-		jsonError(w, "campo 'sptrans_line_id' obrigatório", http.StatusBadRequest)
-		return
-	}
-
-	lineStops, err := h.sptrans.GetStopsByLine(body.SptransLineID)
-	if err != nil {
-		log.Printf("[AdminSyncStops] erro SPTrans: %v", err)
-
-		jsonError(
-			w,
-			"falha ao buscar paradas",
-			http.StatusBadGateway,
-		)
-
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
-	defer cancel()
-
-	persisted, linked, err := h.stops.UpsertStopsForLine(
-		ctx,
-		body.SptransLineID,
-		lineStops,
-	)
-
-	if err != nil {
-		log.Printf("[AdminSyncStops] erro banco: %v", err)
-
-		jsonError(
-			w,
-			"falha ao salvar paradas",
-			http.StatusBadGateway,
-		)
-
-		return
-	}
-
-	jsonOK(w, map[string]any{
-		"line_id":       body.SptransLineID,
-		"stops_fetched": len(lineStops),
-		"stops_saved":   persisted,
-		"links_saved":   linked,
-	})
+	h.syncStopsBatch(w, r)
 }
 
-// POST /admin/sync/full
+// POST /admin/sync/full: bounded catalog-only synchronization.
 func (h *Handler) AdminFullSync(w http.ResponseWriter, r *http.Request) {
-
-	go func() {
-		log.Println("[ADMIN FULL SYNC] iniciado")
-
-		terms := []string{
-			"0", "1", "2", "3", "4",
-			"5", "6", "7", "8", "9",
-		}
-
-		if err := h.sptrans.Authenticate(); err != nil {
-			log.Printf("[ADMIN FULL SYNC] auth erro: %v", err)
-			return
-		}
-
-		ctx := context.Background()
-
-		var totalLines atomic.Int64
-		var totalStops atomic.Int64
-
-		result := h.sptrans.SyncLines(
-			terms,
-			10,
-			func(line sptrans.RawLine) error {
-				currentLines := totalLines.Add(1)
-
-				if currentLines%100 == 0 {
-					log.Printf("[ADMIN FULL SYNC] progresso: %d linhas, %d paradas", currentLines, totalStops.Load())
-				}
-
-				if h.lines != nil {
-					if err := h.lines.UpsertFromSPTrans(ctx, line); err != nil {
-						return err
-					}
-				}
-
-				// Grava linha no Valkey
-				if h.cache != nil {
-					fullCode := fmt.Sprintf("%s-%d", strings.TrimSpace(line.LT), line.TL)
-					payload := cache.CachedLine{
-						Code:        fullCode,
-						Name:        strings.TrimSpace(line.TP + " - " + line.TS),
-						Origin:      strings.TrimSpace(line.TP),
-						Destination: strings.TrimSpace(line.TS),
-						Circular:    line.LC,
-						SptransID:   line.CL,
-						UpdatedAt:   time.Now().Format(time.RFC3339),
-					}
-					_ = h.cache.SetJSON(ctx, cache.KeyLineByID(line.CL), payload, cache.TTLLines)
-					_ = h.cache.SetJSON(ctx, cache.KeyLineByCode(fullCode, line.SL), line.CL, cache.TTLLines)
-				}
-
-				stops, err := h.sptrans.GetStopsByLine(line.CL)
-				if err != nil {
-					log.Printf("[ADMIN FULL SYNC] stops erro line=%d err=%v", line.CL, err)
-					return nil
-				}
-
-				if h.stops != nil {
-					saved, _, err := h.stops.UpsertStopsForLine(ctx, line.CL, stops)
-					if err != nil {
-						return err
-					}
-					totalStops.Add(saved)
-
-					// Grava paradas no Valkey
-					if h.cache != nil {
-						_ = h.cache.SetJSON(ctx, cache.KeyStopsForLine(line.CL), stops, cache.TTLStops)
-						for _, s := range stops {
-							payload := cache.CachedStop{
-								SptransCode: s.CP,
-								Name:        s.NP,
-								Address:     s.Ed,
-								Lat:         s.Lat,
-								Lng:         s.Lng,
-								UpdatedAt:   time.Now().Format(time.RFC3339),
-							}
-							_ = h.cache.SetJSON(ctx, cache.KeyStopByCP(s.CP), payload, cache.TTLStops)
-						}
-					}
-				}
-
-				return nil
-			},
-		)
-
-		if len(result.Errors) > 0 {
-			for _, e := range result.Errors {
-				log.Printf("[ADMIN FULL SYNC] erro: %v", e)
-			}
-			return
-		}
-
-		log.Printf("[ADMIN FULL SYNC] finalizado lines=%d stops=%d", totalLines.Load(), totalStops.Load())
-	}()
-
-	jsonOK(w, map[string]any{"status": "started"})
+	h.syncCatalog(w, r)
 }
 
 // POST /admin/sync/valkey

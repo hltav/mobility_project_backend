@@ -30,6 +30,7 @@ RUN npm run build
 
 FROM php:8.3-fpm
 
+# Install PhpRedis in the final PHP runtime, preserving the existing extensions.
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -41,6 +42,8 @@ RUN apt-get update && apt-get install -y \
     libicu-dev \
     libpq-dev \
     && docker-php-ext-install pdo_mysql pdo_pgsql mbstring exif pcntl bcmath zip intl \
+    && pecl install redis-6.1.0 \
+    && docker-php-ext-enable redis \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer

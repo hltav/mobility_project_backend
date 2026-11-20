@@ -1,9 +1,9 @@
 package sptrans
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -24,7 +24,7 @@ type Client struct {
 	httpClient *http.Client
 	jar        *cookiejar.Jar
 	authedAt   time.Time
-	mu         sync.Mutex
+	authGate   chan struct{}
 }
 
 func NewClient(token string) (*Client, error) {
@@ -34,7 +34,8 @@ func NewClient(token string) (*Client, error) {
 	}
 
 	return &Client{
-		token: token,
+		token:    token,
+		authGate: make(chan struct{}, 1),
 		httpClient: &http.Client{
 			Jar:     jar,
 			Timeout: 10 * time.Second,
@@ -43,43 +44,46 @@ func NewClient(token string) (*Client, error) {
 	}, nil
 }
 
-// Authenticate autentica na API e armazena o cookie de sessão.
+// Authenticate preserves the legacy API and shares the contextual authentication path.
 func (c *Client) Authenticate() error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	endpoint := fmt.Sprintf("%s/Login/Autenticar?token=%s", baseURL, c.token)
-	req, err := http.NewRequest("POST", endpoint, strings.NewReader(""))
-	if err != nil {
-		return fmt.Errorf("criar request de auth: %w", err)
-	}
-	req.Header.Set("Content-Length", "0")
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request de auth: %w", err)
-	}
-	defer resp.Body.Close()
-
-	var ok bool
-	if err := json.NewDecoder(resp.Body).Decode(&ok); err != nil || !ok {
-		return fmt.Errorf("auth retornou false ou erro de decode")
-	}
-
-	c.authedAt = time.Now()
-	log.Println("[SPTrans] Autenticado com sucesso")
-	return nil
+	return c.authenticateContext(context.Background(), true)
 }
 
-// ensureAuthenticated reautentica se a sessão tiver expirado.
 func (c *Client) ensureAuthenticated() error {
-	c.mu.Lock()
-	expired := c.authedAt.IsZero() || time.Since(c.authedAt) > sessionTTL
-	c.mu.Unlock()
+	return c.authenticateContext(context.Background(), false)
+}
 
-	if expired {
-		return c.Authenticate()
+// Serializes session renewal while allowing cancellation when waiting for it.
+func (c *Client) authenticateContext(ctx context.Context, force bool) error {
+	if err := ctx.Err(); err != nil {
+		return apiFailure(ErrAuthentication, 0, err)
 	}
+	select {
+	case c.authGate <- struct{}{}:
+		defer func() { <-c.authGate }()
+	case <-ctx.Done():
+		return apiFailure(ErrAuthentication, 0, ctx.Err())
+	}
+	if err := ctx.Err(); err != nil {
+		return apiFailure(ErrAuthentication, 0, err)
+	}
+	if !force && !c.authedAt.IsZero() && time.Since(c.authedAt) <= sessionTTL {
+		return nil
+	}
+	endpoint := baseURL + "/Login/Autenticar?" + url.Values{"token": {c.token}}.Encode()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(""))
+	if err != nil {
+		return apiFailure(ErrAuthentication, 0, nil)
+	}
+	body, err := c.responseBody(ctx, req, ErrAuthentication)
+	if err != nil {
+		return err
+	}
+	var ok bool
+	if err := json.Unmarshal(body, &ok); err != nil || !ok {
+		return apiFailure(ErrAuthentication, 0, nil)
+	}
+	c.authedAt = time.Now()
 	return nil
 }
 
@@ -168,12 +172,23 @@ type RawLine struct {
 
 // SearchLines busca linhas pelo termo informado.
 func (c *Client) SearchLines(term string) ([]RawLine, error) {
+	return c.SearchLinesContext(context.Background(), term)
+}
+
+func (c *Client) SearchLinesContext(ctx context.Context, term string) ([]RawLine, error) {
 	if strings.TrimSpace(term) == "" {
 		return nil, nil
 	}
 
 	q := url.Values{"termosBusca": {term}}
-	body, err := c.get("/Linha/Buscar", q)
+	if err := c.authenticateContext(ctx, false); err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/Linha/Buscar?"+q.Encode(), nil)
+	if err != nil {
+		return nil, apiFailure(ErrTransport, 0, nil)
+	}
+	body, err := c.responseBody(ctx, req, ErrTransport)
 	if err != nil {
 		return nil, err
 	}
@@ -182,19 +197,31 @@ func (c *Client) SearchLines(term string) ([]RawLine, error) {
 	if err := json.Unmarshal(body, &lines); err != nil {
 		return nil, fmt.Errorf("decode linhas: %w", err)
 	}
+	if lines == nil {
+		return nil, apiFailure(ErrIncompleteResponse, 0, nil)
+	}
 	return lines, nil
 }
 
 // SyncResult resume o resultado de uma sincronização.
 type SyncResult struct {
-	Total   int
-	Success int
-	Errors  []error
+	Total    int
+	Success  int
+	Errors   []error
+	Received int
 }
 
 // SyncLines sincroniza uma lista de termos em paralelo.
 // workers controla a concorrência (ex: 10).
 func (c *Client) SyncLines(terms []string, workers int, onLine func(RawLine) error) SyncResult {
+	return c.SyncLinesContext(context.Background(), terms, workers, onLine)
+}
+
+// SyncLinesContext is the existing synchronization path with bounded cancellation.
+func (c *Client) SyncLinesContext(ctx context.Context, terms []string, workers int, onLine func(RawLine) error) SyncResult {
+	if workers < 1 || workers > 10 || onLine == nil {
+		return SyncResult{Errors: []error{fmt.Errorf("invalid synchronization configuration")}}
+	}
 	termsCh := make(chan string, len(terms))
 	for _, t := range terms {
 		termsCh <- t
@@ -202,8 +229,9 @@ func (c *Client) SyncLines(terms []string, workers int, onLine func(RawLine) err
 	close(termsCh)
 
 	type outcome struct {
-		count int
-		err   error
+		count    int
+		received int
+		err      error
 	}
 	resultsCh := make(chan outcome, len(terms))
 
@@ -213,12 +241,21 @@ func (c *Client) SyncLines(terms []string, workers int, onLine func(RawLine) err
 		go func() {
 			defer wg.Done()
 			for term := range termsCh {
-				lines, err := c.SearchLines(term)
+				if ctx.Err() != nil {
+					return
+				}
+				lines, err := c.SearchLinesContext(ctx, term)
 				if err != nil {
 					resultsCh <- outcome{err: fmt.Errorf("termo %q: %w", term, err)}
 					continue
 				}
+				if len(lines) > 0 {
+					resultsCh <- outcome{received: len(lines)}
+				}
 				for _, l := range lines {
+					if ctx.Err() != nil {
+						return
+					}
 					if err := onLine(l); err != nil {
 						resultsCh <- outcome{err: err}
 					} else {
@@ -237,12 +274,19 @@ func (c *Client) SyncLines(terms []string, workers int, onLine func(RawLine) err
 
 	var summary SyncResult
 	for r := range resultsCh {
+		if r.received > 0 {
+			summary.Received += r.received
+			continue
+		}
 		summary.Total++
 		if r.err != nil {
 			summary.Errors = append(summary.Errors, r.err)
 		} else {
 			summary.Success += r.count
 		}
+	}
+	if ctx.Err() != nil {
+		summary.Errors = append(summary.Errors, ctx.Err())
 	}
 	return summary
 }

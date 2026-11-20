@@ -1,0 +1,4 @@
+services:
+  processor:
+    environment:
+      SPTRANS_PREDICTIONS_ENABLED: "true"

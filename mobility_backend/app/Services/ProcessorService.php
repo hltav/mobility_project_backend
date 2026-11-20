@@ -185,16 +185,12 @@ class ProcessorService
                 'limit' => $limit,
                 'only_with_lines' => $onlyWithLines,
             ]);
-            $this->logFailedResponse('getNearestStops', $response, [
-                'lat' => $lat,
-                'lng' => $lng,
-                'radius_km' => $radiusKm,
-                'limit' => $limit,
-                'only_with_lines' => $onlyWithLines,
-            ]);
+            if ($response->failed()) {
+                Log::error('[Processor] getNearestStops retornou HTTP inválido', ['status' => $response->status()]);
+            }
             return $response->json('stops', []);
         } catch (\Throwable $e) {
-            Log::error('[Processor] getNearestStops falhou', ['error' => $e->getMessage()]);
+            Log::error('[Processor] getNearestStops falhou', ['exception_type' => get_class($e)]);
             return [];
         }
     }

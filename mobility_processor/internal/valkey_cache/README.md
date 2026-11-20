@@ -204,3 +204,94 @@ Endpoints cacheados atualmente        → INTEGRATION_GUIDE.txt (matriz)
 - Integração com Laravel (compartilhar cache via Redis)
 
 ════════════════════════════════════════════════════════════════════════════════
+
+
+## OPE-38 P3B.5 — integração com scripts Lua reais
+
+Esta seção descreve o cliente Valkey atual (Go Redis / DB 0). As descrições
+históricas de cache em arquivos acima não se aplicam a estes testes.
+
+`prediction_lua_integration_test.go` executa os scripts de produção por meio de
+`Client`, `PredictionCache.Save/Read`, `AcquirePredictionLease` e
+`FinishPredictionLease`. O hook de teste apenas prefixa as chaves e encaminha os
+comandos ao Valkey real; não simula os resultados do Lua. Não instancia o coletor
+nem o cliente HTTP SPTrans. Os dados de previsão são sintéticos.
+
+### Proteções e configuração obrigatória
+
+- Sem as três variáveis abaixo, os testes usam `t.Skip` antes de conectar.
+- `VALKEY_LUA_TEST_ADDR`: IP de loopback explícito e porta diferente de 6379.
+  Não há fallback para localhost, valkey ou variáveis VALKEY_* operacionais.
+- `VALKEY_LUA_TEST_ISOLATED=1`: confirmação explícita do ambiente descartável.
+- `VALKEY_LUA_TEST_RUN_ID`: identificador exclusivo, de 16–80 caracteres
+  alfanuméricos, hífen ou underscore. UUID atende ao formato.
+- Antes de qualquer escrita, exige que `test:ope38:lua:instance` contenha o mesmo
+  ID na instância isolada. Um endereço/marcador inválido resulta em falha segura.
+- Cada teste usa `test:ope38:lua:<run-id>:<aleatório>:` em todas as suas chaves.
+  Somente as chaves registradas desse teste são removidas por `DEL` no cleanup.
+  Não há FLUSHDB, FLUSHALL, SCAN ou KEYS. O marcador é apenas lido pelos testes.
+- Estes testes não são apropriados para uma instância operacional, mesmo com
+  namespace. O opt-in e o marcador não substituem a escolha correta do container.
+
+### Execução manual no Ubuntu
+
+Nenhum comando abaixo foi executado pelo Codex. Na raiz `mobility_project`,
+crie um container novo sem volumes e sem persistência, somente na porta separada:
+
+```bash
+export VALKEY_LUA_TEST_RUN_ID="$(cat /proc/sys/kernel/random/uuid)"
+export VALKEY_LUA_TEST_ADDR=127.0.0.1:16379
+export VALKEY_LUA_TEST_ISOLATED=1
+ope38_lua_container="ope38-valkey-lua-${VALKEY_LUA_TEST_RUN_ID}"
+
+docker run --detach --rm --name "$ope38_lua_container" \
+  --publish 127.0.0.1:16379:6379 \
+  valkey/valkey:7.2-alpine valkey-server --save "" --appendonly no
+
+docker exec "$ope38_lua_container" valkey-cli PING
+```
+
+Espere `PONG` (se ainda estiver inicializando, repita apenas o PING). Não remova
+outro serviço se a porta estiver ocupada; escolha outra porta de loopback e ajuste
+ambos o publish e VALKEY_LUA_TEST_ADDR. Prepare o marcador somente no container
+que acabou de criar:
+
+```bash
+docker exec "$ope38_lua_container" valkey-cli SET \
+  test:ope38:lua:instance "$VALKEY_LUA_TEST_RUN_ID"
+
+cd mobility_processor
+go test ./internal/valkey_cache -run '^TestPredictionLua' -count=1 -v
+```
+
+A suíte deve executar, e não apenas mostrar SKIP. Não redirecione esse endereço
+para o Valkey do projeto. As conexões usam DB 0 e não carregam credenciais ou
+configuração operacional. A execução requer Go/dependências já disponíveis; não
+inicia serviços por conta própria.
+
+Ao terminar, mesmo se os testes falharem, pare somente o container criado acima:
+
+```bash
+docker stop "$ope38_lua_container"
+unset VALKEY_LUA_TEST_ADDR VALKEY_LUA_TEST_ISOLATED VALKEY_LUA_TEST_RUN_ID
+```
+
+`--rm` remove o container ao parar; nenhum volume foi associado. Não é necessário
+apagar chaves globalmente. Se o processo Go for interrompido abruptamente, a
+remoção do container elimina o ambiente descartável.
+
+### Cenários e limites
+
+- Escritas concorrentes de snapshots e preservação da tentativa mais recente;
+  rejeição de tentativa antiga/igual sem renovar a retenção física.
+- Concorrência de leases entre dois clientes independentes: um único vencedor.
+- Token incorreto não libera lease nem modifica o contador de falhas.
+- Cooldown impede aquisição e libera após expiração.
+- Backoff exponencial, aplicação do teto e reset após sucesso.
+- Dono antigo de lease expirado não libera o lease do novo proprietário.
+
+As esperas por expiração têm prazo finito; os testes verificam TTLs reais e podem
+falhar em ambiente excessivamente pausado/lento. Não são benchmark ou teste de
+carga. Não validam cluster, indisponibilidade de rede, SPTrans ou scheduler.
+Não foi identificado defeito comprovado nos scripts por esta revisão estática;
+nenhum script de produção foi alterado. A execução manual ainda é necessária.

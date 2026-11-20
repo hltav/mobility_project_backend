@@ -1,0 +1,5 @@
+services:
+  processor:
+    environment:
+      PROCESSOR_ADMIN_TOKEN: ${PROCESSOR_ADMIN_TOKEN:?Set the existing administrative token}
+      PROCESSOR_STOPS_ALLOWED_CLS: ${PROCESSOR_STOPS_ALLOWED_CLS:?Set the explicit CL allowlist from the batch selection}

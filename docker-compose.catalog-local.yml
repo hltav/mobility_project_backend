@@ -1,0 +1,5 @@
+# Explicit opt-in for the existing Processor service; no extra container.
+services:
+  processor:
+    environment:
+      PROCESSOR_ADMIN_TOKEN: ${PROCESSOR_ADMIN_TOKEN:?Set PROCESSOR_ADMIN_TOKEN explicitly for catalog administration}

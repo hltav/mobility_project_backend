@@ -39,4 +39,13 @@ class LineRepository
         return Line::where('sptrans_id', $sptransId)->first();
     }
 
+    /** A code is only a lookup key; ambiguous operational identities are rejected. */
+    public function findByCodeAndDirection(string $code, int $direction): ?Line
+    {
+        $lines = Line::where('provider', 'sptrans')->where('code', $code)
+            ->where('sptrans_direction', $direction)->limit(2)->get();
+
+        return $lines->count() === 1 ? $lines->first() : null;
+    }
+
 }

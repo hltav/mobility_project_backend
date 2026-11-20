@@ -17,6 +17,30 @@ use Illuminate\Support\Facades\Log;
  */
 class ValkeyService
 {
+    /** One shared snapshot read; physical retention is not forecast freshness. */
+    public function getPredictionSnapshot(int $cl, int $direction): ?array
+    {
+        if ($cl <= 0 || !in_array($direction, [1, 2], true)) { return null; }
+        try {
+            $raw = Redis::get("sptrans:prediction:v1:cl:{$cl}:sl:{$direction}");
+            $data = $raw ? json_decode($raw, true, 512, JSON_THROW_ON_ERROR) : null;
+            return is_array($data) && !array_is_list($data) ? $data : null;
+        } catch (\Throwable $e) { return null; }
+    }
+
+    /** Processor snapshot only. Never fetch or synchronize during progress reads. */
+    public function getVehicleSnapshot(int $sptransId): ?array
+    {
+        try {
+            $raw = Redis::get("buses:line:{$sptransId}");
+            $positions = $raw ? json_decode($raw, true) : null;
+            return is_array($positions) && array_is_list($positions)
+                && count(array_filter($positions, 'is_array')) === count($positions) ? $positions : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
     /**
      * Retorna as paradas de uma linha em uma direção específica.
      * Lê stops:line:<sptrans_id>:dir:<dir> gravado pelo importgtfslinestops.
