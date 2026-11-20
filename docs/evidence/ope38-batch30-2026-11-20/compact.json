@@ -1,0 +1,260 @@
+[
+  {
+    "code": "1012-10",
+    "cls": "2486 (SL 1) / 35254 (SL 2)",
+    "patterns": [
+      1
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1012-21",
+    "cls": "2570 (SL 1) / 35338 (SL 2)",
+    "patterns": [
+      2
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1014-10",
+    "cls": "2609 (SL 1) / 35377 (SL 2)",
+    "patterns": [
+      3
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1015-10",
+    "cls": "2230 (SL 1) / 34998 (SL 2)",
+    "patterns": [
+      4
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1016-10",
+    "cls": "831 (SL 1) / 33599 (SL 2)",
+    "patterns": [
+      5,
+      6
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1017-10",
+    "cls": "2141 (SL 1) / 34909 (SL 2)",
+    "patterns": [
+      7,
+      8
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1018-10",
+    "cls": "832 (SL 1) / 33600 (SL 2)",
+    "patterns": [
+      9,
+      10
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1019-10",
+    "cls": "2495 (SL 1) / 35263 (SL 2)",
+    "patterns": [
+      11,
+      12
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1020-10",
+    "cls": "2497 (SL 1) / 35265 (SL 2)",
+    "patterns": [
+      13,
+      14
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1021-10",
+    "cls": "833 (SL 1) / 33601 (SL 2)",
+    "patterns": [
+      15,
+      16
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1022-10",
+    "cls": "2610 (SL 1) / 35378 (SL 2)",
+    "patterns": [
+      17
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1023-10",
+    "cls": "2559 (SL 1) / 35327 (SL 2)",
+    "patterns": [
+      18
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1024-10",
+    "cls": "2302 (SL 1) / 35070 (SL 2)",
+    "patterns": [
+      19,
+      20
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1025-10",
+    "cls": "2303 (SL 1) / 35071 (SL 2)",
+    "patterns": [
+      21,
+      22
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1026-10",
+    "cls": "2306 (SL 1) / 35074 (SL 2)",
+    "patterns": [
+      23,
+      24
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1027-10",
+    "cls": "2689 (SL 1) / 35457 (SL 2)",
+    "patterns": [],
+    "classification": "insuficiente — sem candidato"
+  },
+  {
+    "code": "1034-10",
+    "cls": "2452 (SL 1) / 35220 (SL 2)",
+    "patterns": [
+      25,
+      26
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1036-10",
+    "cls": "2453 (SL 1) / 35221 (SL 2)",
+    "patterns": [
+      27,
+      28
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "106A-10",
+    "cls": "516 (SL 1) / 33284 (SL 2)",
+    "patterns": [
+      29,
+      30
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "107T-10",
+    "cls": "621 (SL 1) / 33389 (SL 2)",
+    "patterns": [
+      31,
+      32
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1156-10",
+    "cls": "659 (SL 1) / 33427 (SL 2)",
+    "patterns": [
+      33,
+      34
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1177-10",
+    "cls": "129 (SL 1) / 32897 (SL 2)",
+    "patterns": [
+      35,
+      36
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1177-31",
+    "cls": "1831 (SL 1) / 34599 (SL 2)",
+    "patterns": [
+      37,
+      38
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1178-10",
+    "cls": "132 (SL 1) / 32900 (SL 2)",
+    "patterns": [
+      39,
+      40
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1178-31",
+    "cls": "1812 (SL 1) / 34580 (SL 2)",
+    "patterns": [
+      41,
+      42
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1178-32",
+    "cls": "2009 (SL 1) / 34777 (SL 2)",
+    "patterns": [
+      43
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1178-33",
+    "cls": "2010 (SL 1) / 34778 (SL 2)",
+    "patterns": [
+      44
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "1178-42",
+    "cls": "133 (SL 1) / 32901 (SL 2)",
+    "patterns": [
+      45
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "118C-10",
+    "cls": "519 (SL 1) / 33287 (SL 2)",
+    "patterns": [
+      46,
+      47
+    ],
+    "classification": "insuficiente"
+  },
+  {
+    "code": "118Y-10",
+    "cls": "841 (SL 1) / 33609 (SL 2)",
+    "patterns": [
+      48,
+      49
+    ],
+    "classification": "insuficiente"
+  }
+]

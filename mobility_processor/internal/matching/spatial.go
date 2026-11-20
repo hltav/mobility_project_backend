@@ -4,8 +4,8 @@ import "mobility_processor/internal/haversine"
 
 // ShapeEndpoint representa o primeiro ou último ponto de um shape GTFS.
 type ShapeEndpoint struct {
-	Lat float64
-	Lng float64
+	Lat float64 `json:"lat"`
+	Lng float64 `json:"lng"`
 }
 
 // spatialScore retorna 1.0 se a origem da linha SPTrans está muito próxima

@@ -1,0 +1,4 @@
+services:
+  backend:
+    environment:
+      GTFS_PREVIEW_ENABLED: "true"

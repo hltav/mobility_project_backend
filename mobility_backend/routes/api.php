@@ -35,6 +35,14 @@ Route::prefix('internal')->group(function () {
 // Rotas protegidas por Sanctum
 Route::middleware('auth:sanctum')->group(function () {
 
+    Route::get('/v1/lines/{id}/vehicles/stop-progress', [\App\Http\Controllers\VehicleProgressController::class, 'index'])->whereNumber('id');
+    Route::get('/v1/gtfs/preview/feeds/{feedId}/patterns/{patternId}/lines/{id}/vehicles/stop-progress',
+        [\App\Http\Controllers\VehicleProgressController::class, 'preview'])->whereNumber(['feedId', 'patternId', 'id']);
+
+    Route::get('/v1/lines/{id}/journey-patterns', [\App\Http\Controllers\JourneyPatternController::class, 'index'])->whereNumber('id');
+    Route::get('/v1/gtfs/preview/feeds/{feedId}/routes/{routeId}/journey-patterns', [\App\Http\Controllers\JourneyPatternController::class, 'preview'])
+        ->whereNumber(['feedId', 'routeId']);
+
     // Auth
     Route::post('/auth/logout', [AuthController::class, 'logout']);
 
@@ -48,6 +56,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/lines',        [LineController::class, 'index']);
 
     // Pontos de ônibus
+    Route::post('/v1/stops/select', [\App\Http\Controllers\OperationalStopController::class, 'select']);
     Route::get('/stops/nearest', [BusStopController::class, 'nearest']);
     Route::get('/stops/trip-nearest', [BusStopController::class, 'tripNearest']);
 
